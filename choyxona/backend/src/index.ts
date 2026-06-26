@@ -3,7 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
-
+import { notifyOperatorAndUser } from './bot.js'
 const prisma = new PrismaClient()
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -211,6 +211,9 @@ app.post('/api/orders', async (req, res) => {
   if (phone) {
     await prisma.user.update({ where: { id: userId }, data: { phone, savedAddress: address, latitude, longitude } })
   }
+
+  // Notify via Telegram bot
+  await notifyOperatorAndUser(order as any)
 
   res.status(201).json(order)
 })
