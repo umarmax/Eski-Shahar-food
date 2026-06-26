@@ -1,0 +1,7 @@
+# Choyxona environment files — do not commit secrets
+backend/.env
+frontend/.env
+backend/node_modules/
+frontend/node_modules/
+frontend/.next/
+backend/dist/
