@@ -67,6 +67,8 @@ type TranslationKey =
   | 'admin.title'
   | 'admin.orders'
   | 'admin.analytics'
+  | 'nav.admin'
+  | 'nav.about'
 
 const translations: Record<Language, Record<TranslationKey, string>> = {
   uz: {
@@ -136,6 +138,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'admin.title': 'Admin panel',
     'admin.orders': 'Buyurtmalar',
     'admin.analytics': 'Analitika',
+    'nav.admin': 'Admin',
+    'nav.about': 'Haqida',
   },
   ru: {
     'hero.title': 'Традиционная узбекская кухня с доставкой',
@@ -204,6 +208,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'admin.title': 'Админ-панель',
     'admin.orders': 'Заказы',
     'admin.analytics': 'Аналитика',
+    'nav.admin': 'Админ',
+    'nav.about': 'О нас',
   },
   en: {
     'hero.title': 'Traditional Uzbek Cuisine Delivered to Your Home',
@@ -272,6 +278,8 @@ const translations: Record<Language, Record<TranslationKey, string>> = {
     'admin.title': 'Admin panel',
     'admin.orders': 'Orders',
     'admin.analytics': 'Analytics',
+    'nav.admin': 'Admin',
+    'nav.about': 'About',
   },
 }
 

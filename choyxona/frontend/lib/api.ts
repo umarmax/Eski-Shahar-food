@@ -12,6 +12,10 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json()
 }
 
+const getAdminHeaders = () => {
+  return { 'x-telegram-id': process.env.NEXT_PUBLIC_ADMIN_TELEGRAM_ID || '' }
+}
+
 export const api = {
   authTelegram: (data: {
     telegramId: string
@@ -70,14 +74,36 @@ export const api = {
   updateUser: (id: string, data: Partial<User>) =>
     fetchApi<User>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
-  getAdminStats: () => fetchApi<AdminStats>('/api/admin/stats'),
+  getAdminStats: () => fetchApi<AdminStats>('/api/admin/stats', { headers: getAdminHeaders() }),
 
-  getAllOrders: () => fetchApi<Order[]>('/api/orders'),
+  getAllOrders: () => fetchApi<Order[]>('/api/orders'), // not strictly admin if used elsewhere, but typically admin
 
   updateOrderStatus: (id: string, status: string) =>
     fetchApi<Order>(`/api/orders/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
+      headers: getAdminHeaders(), // Assuming we want to protect this eventually, but it's not under /api/admin/
+    }),
+
+  // CRUD Products
+  createProduct: (data: Partial<LocalizedProduct>) =>
+    fetchApi<LocalizedProduct>('/api/admin/products', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: getAdminHeaders(),
+    }),
+
+  updateProduct: (id: string, data: Partial<LocalizedProduct>) =>
+    fetchApi<LocalizedProduct>(`/api/admin/products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+      headers: getAdminHeaders(),
+    }),
+
+  deleteProduct: (id: string) =>
+    fetchApi<{ success: boolean }>(`/api/admin/products/${id}`, {
+      method: 'DELETE',
+      headers: getAdminHeaders(),
     }),
 }
 

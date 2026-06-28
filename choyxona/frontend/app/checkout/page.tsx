@@ -127,13 +127,25 @@ export default function CheckoutPage() {
 
       {/* Contact */}
       <div className="space-y-3 mb-6">
-        <Button variant="outline" fullWidth onClick={handleRequestContact}>
-          <Phone className="w-4 h-4" />
-          {t(language, 'checkout.requestContact')}
-        </Button>
-        {phone && (
-          <p className="text-sm text-emerald text-center">✓ {phone}</p>
-        )}
+        <div className="bg-card rounded-[20px] p-4 shadow-soft">
+          <p className="text-xs text-text-muted mb-3 font-medium uppercase tracking-wide">
+            {t(language, 'checkout.requestContact')}
+          </p>
+          <Button variant="outline" fullWidth onClick={handleRequestContact} className="mb-3">
+            <Phone className="w-4 h-4" />
+            {t(language, 'checkout.requestContact')}
+          </Button>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+998 90 000 00 00"
+            className="w-full px-4 py-3 bg-cream rounded-[14px] text-sm outline-none border border-border focus:border-walnut transition-colors"
+          />
+          {phone && (
+            <p className="text-sm text-emerald mt-2 flex items-center gap-1">✓ {phone}</p>
+          )}
+        </div>
 
         <Button variant="outline" fullWidth onClick={handleRequestLocation}>
           <MapPin className="w-4 h-4" />

@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowLeft, TrendingUp, Users, ShoppingBag, UtensilsCrossed } from 'lucide-react'
+import { ArrowLeft, TrendingUp, Users, ShoppingBag, UtensilsCrossed, Plus, Edit, Trash } from 'lucide-react'
 import { PageLoader } from '@/components/ui/Loading'
+import { Button } from '@/components/ui/Button'
 import { api, formatPrice } from '@/lib/api'
 import { t } from '@/lib/i18n'
 import { useAppStore } from '@/lib/store'
@@ -14,11 +15,14 @@ export default function AdminPage() {
   const language = useAppStore((s) => s.language)
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
-  const [tab, setTab] = useState<'orders' | 'analytics'>('orders')
+  const [products, setProducts] = useState<any[]>([])
+  const [tab, setTab] = useState<'orders' | 'analytics' | 'menu'>('orders')
   const [loading, setLoading] = useState(true)
 
+  const fetchProducts = () => api.getProducts(language).then(setProducts).catch(console.error)
+
   useEffect(() => {
-    Promise.all([api.getAdminStats(), api.getAllOrders()])
+    Promise.all([api.getAdminStats(), api.getAllOrders(), fetchProducts()])
       .then(([s, o]) => {
         setStats(s)
         setOrders(o)
@@ -51,16 +55,16 @@ export default function AdminPage() {
 
       <h1 className="font-serif text-3xl mb-6">{t(language, 'admin.title')}</h1>
 
-      <div className="flex gap-2 mb-6">
-        {(['orders', 'analytics'] as const).map((t_) => (
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+        {(['orders', 'analytics', 'menu'] as const).map((t_) => (
           <button
             key={t_}
             onClick={() => setTab(t_)}
-            className={`px-4 py-2 rounded-full text-sm font-medium ${
+            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
               tab === t_ ? 'bg-walnut text-white' : 'bg-card text-text-muted shadow-soft'
             }`}
           >
-            {t(language, t_ === 'orders' ? 'admin.orders' : 'admin.analytics')}
+            {t_ === 'menu' ? 'Menu CRUD' : t(language, t_ === 'orders' ? 'admin.orders' : 'admin.analytics')}
           </button>
         ))}
       </div>
@@ -124,6 +128,44 @@ export default function AdminPage() {
               </div>
             </div>
           ))}
+        </motion.div>
+      )}
+
+      {tab === 'menu' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="font-semibold text-lg">Menu Items</h2>
+            <Link href="/admin/menu/new">
+              <Button size="sm" variant="emerald" className="gap-2"><Plus className="w-4 h-4"/> Add New</Button>
+            </Link>
+          </div>
+          
+          <div className="space-y-3">
+            {products.map((p) => (
+              <div key={p.id} className="bg-card rounded-[20px] p-4 shadow-soft flex gap-4 items-center">
+                <img src={p.imageUrl} alt={p.name} className="w-16 h-16 rounded-xl object-cover bg-cream" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold truncate">{p.name}</h3>
+                  <p className="text-sm text-text-muted">{formatPrice(p.price, language)}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Link href={`/admin/menu/${p.id}`}>
+                    <button className="p-2 text-text-muted hover:text-walnut bg-cream rounded-full">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                  </Link>
+                  <button onClick={async () => {
+                    if (confirm('Are you sure you want to delete this product?')) {
+                      await api.deleteProduct(p.id)
+                      fetchProducts()
+                    }
+                  }} className="p-2 text-red-400 hover:text-red-500 bg-red-50 rounded-full">
+                    <Trash className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </motion.div>
       )}
     </main>

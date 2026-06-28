@@ -283,8 +283,21 @@ app.patch('/api/users/:id', async (req, res) => {
   res.json(user)
 })
 
+// Admin Middleware
+const isAdmin = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const adminId = process.env.ADMIN_TELEGRAM_ID
+  const telegramId = Array.isArray(req.headers['x-telegram-id'])
+    ? req.headers['x-telegram-id'][0]
+    : req.headers['x-telegram-id']
+  
+  if (!adminId || telegramId !== adminId) {
+    return res.status(403).json({ error: 'Forbidden' })
+  }
+  next()
+}
+
 // Admin routes
-app.get('/api/admin/stats', async (_req, res) => {
+app.get('/api/admin/stats', isAdmin, async (_req, res) => {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const [totalOrders, todayOrders, totalRevenue, todayRevenue, products, customers] = await Promise.all([
@@ -318,9 +331,24 @@ app.get('/api/admin/stats', async (_req, res) => {
   })
 })
 
-app.patch('/api/admin/products/:id', async (req, res) => {
-  const product = await prisma.product.update({ where: { id: req.params.id }, data: req.body })
+app.patch('/api/admin/products/:id', isAdmin, async (req, res) => {
+  const product = await prisma.product.update({ where: { id: String(req.params.id) }, data: req.body as any })
   res.json(product)
+})
+
+app.post('/api/admin/products', isAdmin, async (req, res) => {
+  const product = await prisma.product.create({ data: req.body as any })
+  res.status(201).json(product)
+})
+
+app.put('/api/admin/products/:id', isAdmin, async (req, res) => {
+  const product = await prisma.product.update({ where: { id: String(req.params.id) }, data: req.body as any })
+  res.json(product)
+})
+
+app.delete('/api/admin/products/:id', isAdmin, async (req, res) => {
+  await prisma.product.delete({ where: { id: String(req.params.id) } })
+  res.json({ success: true })
 })
 
 app.listen(PORT, () => {

@@ -3,24 +3,34 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Home, UtensilsCrossed, Search, ShoppingBag, User } from 'lucide-react'
+import { Home, UtensilsCrossed, Search, ShoppingBag, User, Info, ShieldCheck } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import { t } from '@/lib/i18n'
+import { useTelegram } from '@/components/providers/TelegramProvider'
 
-const tabs = [
+const baseTabs = [
   { href: '/', icon: Home, key: 'nav.home' as const },
   { href: '/menu', icon: UtensilsCrossed, key: 'nav.menu' as const },
-  { href: '/search', icon: Search, key: 'nav.search' as const },
   { href: '/cart', icon: ShoppingBag, key: 'nav.cart' as const },
+  { href: '/about', icon: Info, key: 'nav.about' as const },
   { href: '/profile', icon: User, key: 'nav.profile' as const },
 ]
+
+const adminTab = { href: '/admin', icon: ShieldCheck, key: 'nav.admin' as const }
 
 export function BottomNav() {
   const pathname = usePathname()
   const language = useAppStore((s) => s.language)
   const cartCount = useAppStore((s) => s.cartCount())
+  const { webApp } = useTelegram()
 
-  if (pathname.startsWith('/admin') || pathname.startsWith('/checkout')) return null
+  const adminId = process.env.NEXT_PUBLIC_ADMIN_TELEGRAM_ID
+  const userId = webApp?.initDataUnsafe?.user?.id?.toString()
+  const isAdmin = !!(adminId && userId === adminId)
+
+  if (pathname.startsWith('/checkout') || pathname.startsWith('/admin')) return null
+
+  const tabs = isAdmin ? [...baseTabs, adminTab] : baseTabs
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 safe-bottom">
@@ -32,7 +42,7 @@ export function BottomNav() {
               <Link
                 key={href}
                 href={href}
-                className="relative flex flex-col items-center gap-0.5 py-2 px-3 min-w-[56px]"
+                className="relative flex flex-col items-center gap-0.5 py-2 px-3 min-w-[48px]"
               >
                 {active && (
                   <motion.div
