@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { PageLoader, TeaSteamLoader } from '@/components/ui/Loading'
 import { api } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
+import { FileUpload } from '@/components/ui/FileUpload'
 
 export default function ProductEditPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
@@ -92,8 +93,11 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
             </select>
           </div>
           <div>
-            <label className="text-xs text-text-muted mb-1 block">Image URL</label>
-            <input type="text" value={formData.imageUrl} onChange={e => setFormData({ ...formData, imageUrl: e.target.value })} className="w-full px-3 py-2 bg-cream rounded-xl outline-none" required />
+            <label className="text-xs text-text-muted mb-1 block">Image / Video</label>
+            <FileUpload 
+              value={formData.imageUrl} 
+              onChange={(url) => setFormData({ ...formData, imageUrl: url })} 
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
