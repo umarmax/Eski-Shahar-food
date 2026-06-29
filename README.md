@@ -17,7 +17,27 @@ A luxury food delivery Telegram Mini App inspired by Old Tashkent, Bukhara, and 
 ### Prerequisites
 
 - Node.js 20+
-- PostgreSQL running locally
+- A Supabase project with a Postgres database
+
+### Supabase setup
+
+1. Create a Supabase project at https://supabase.com
+2. Open Project Settings → Database
+3. Copy the connection string for the Postgres database
+4. Replace the placeholder password in the URL below and set it as `DATABASE_URL` in your environment
+
+Example:
+
+```env
+DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.icjrhufmtqedmihjogco.supabase.co:5432/postgres?sslmode=require
+```
+
+If you want to use Prisma migrations, run:
+
+```bash
+cd frontend
+npx prisma db push
+```
 
 ### Setup
 
@@ -50,6 +70,21 @@ npm run dev
 1. Create a bot via [@BotFather](https://t.me/BotFather)
 2. Set menu button URL to your deployed frontend
 3. Add `TELEGRAM_BOT_TOKEN` to `backend/.env` for order notifications (optional)
+
+## Deploy to Vercel
+
+1. Push this repository to GitHub
+2. Create a new Vercel project
+3. Import the repository
+4. Set the project root to the frontend folder
+5. Add these environment variables in Vercel:
+   - `DATABASE_URL`
+   - `NEXT_PUBLIC_ADMIN_TELEGRAM_ID`
+   - `TELEGRAM_BOT_TOKEN` (optional)
+   - `OPERATOR_CHAT_ID` (optional)
+6. Deploy
+
+For the frontend app, Vercel will use the Next.js app inside the frontend folder.
 
 ## Features
 
