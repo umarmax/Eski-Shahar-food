@@ -73,10 +73,12 @@ npm run dev
 
 ## Deploy to Vercel
 
+You do not need to create separate frontend and backend projects.
+
 1. Push this repository to GitHub
-2. Create a new Vercel project
+2. Create one new Vercel project
 3. Import the repository
-4. Set the project root to the frontend folder
+4. Set the project root to the repository root, or use the frontend folder as the app directory if Vercel asks for it
 5. Add these environment variables in Vercel:
    - `DATABASE_URL`
    - `NEXT_PUBLIC_ADMIN_TELEGRAM_ID`
@@ -84,7 +86,7 @@ npm run dev
    - `OPERATOR_CHAT_ID` (optional)
 6. Deploy
 
-For the frontend app, Vercel will use the Next.js app inside the frontend folder.
+The Next.js app in the frontend folder will be served from this single project, and Supabase will provide the database backend.
 
 ## Features
 
