@@ -1,10 +1,12 @@
 import type { AdminStats, Category, LocalizedProduct, Order, ProductFilters, RestaurantSettings, User } from './types'
 import type { Language } from './types'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || ''
 
 async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
+  const url = /^https?:\/\//i.test(path) ? path : `${API}${path}`
+  const res = await fetch(url, {
+    credentials: 'include',
     ...options,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
   })
@@ -12,16 +14,10 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json()
 }
 
-const getAdminHeaders = () => {
-  return { 'x-telegram-id': process.env.NEXT_PUBLIC_ADMIN_TELEGRAM_ID || '' }
-}
-
+const getAdminHeaders = () => ({})
 export const api = {
   authTelegram: (data: {
-    telegramId: string
-    username?: string
-    firstName?: string
-    lastName?: string
+    initData: string
     language?: Language
   }) => fetchApi<User>('/api/auth/telegram', { method: 'POST', body: JSON.stringify(data) }),
 

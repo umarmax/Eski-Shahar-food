@@ -54,14 +54,11 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
           setIsDark(WebApp.colorScheme === 'dark')
         })
 
-        const tgUser = WebApp.initDataUnsafe?.user
-        if (tgUser) {
+        const initData = WebApp.initData
+        if (initData) {
           api
             .authTelegram({
-              telegramId: String(tgUser.id),
-              username: tgUser.username,
-              firstName: tgUser.first_name,
-              lastName: tgUser.last_name,
+              initData,
               language,
             })
             .then(setUser)
@@ -69,10 +66,7 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
         } else {
           api
             .authTelegram({
-              telegramId: 'dev-user-1',
-              username: 'devuser',
-              firstName: 'Mehmon',
-              lastName: 'Test',
+              initData: 'dev-user-init-data',
               language,
             })
             .then(setUser)
