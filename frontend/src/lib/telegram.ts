@@ -66,8 +66,17 @@ interface TelegramWebApp {
     notificationOccurred: (type: 'error' | 'success' | 'warning') => void
     selectionChanged: () => void
   }
+  openLink: (url: string, options?: { try_instant_view?: boolean }) => void
+  openTelegramLink: (url: string) => void
   showAlert: (message: string, callback?: () => void) => void
   showConfirm: (message: string, callback?: (confirmed: boolean) => void) => void
+  BackButton: {
+    isVisible: boolean
+    onClick: (callback: () => void) => void
+    offClick: (callback: () => void) => void
+    show: () => void
+    hide: () => void
+  }
 }
 
 // Create a safe wrapper that handles missing Telegram context
@@ -117,6 +126,8 @@ const createSafeWebApp = (): TelegramWebApp => {
       notificationOccurred: () => {},
       selectionChanged: () => {},
     },
+    openLink: (url: string) => { window.open(url, '_blank') },
+    openTelegramLink: (url: string) => { window.open(url, '_blank') },
     showAlert: (message: string, callback?: () => void) => {
       alert(message)
       callback?.()
@@ -124,6 +135,13 @@ const createSafeWebApp = (): TelegramWebApp => {
     showConfirm: (message: string, callback?: (confirmed: boolean) => void) => {
       const result = confirm(message)
       callback?.(result)
+    },
+    BackButton: {
+      isVisible: false,
+      onClick: () => {},
+      offClick: () => {},
+      show: () => {},
+      hide: () => {},
     },
   }
 }
