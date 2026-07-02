@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useSettingsStore, formatPrice } from '../store/settingsStore'
+import { useCartStore } from '../store/cartStore'
 import { getProductName } from '../lib/i18n'
+import { WebApp } from '../lib/telegram'
 import type { Product } from '../types'
 
 interface ProductCardProps {
@@ -11,6 +13,14 @@ interface ProductCardProps {
 
 export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const lang = useSettingsStore((s) => s.language)
+  const addItem = useCartStore((s) => s.addItem)
+
+  const handleQuickAdd = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    addItem(product, 1)
+    try { WebApp.HapticFeedback.impactOccurred('light') } catch {}
+  }
 
   return (
     <motion.div
@@ -50,10 +60,14 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
           >
             {formatPrice(product.price)}
           </p>
-          <div className="flex gap-1">
-            {product.is_vegetarian && <span className="text-xs">🥬</span>}
-            {product.is_spicy && <span className="text-xs">🌶️</span>}
-          </div>
+          <button
+            type="button"
+            onClick={handleQuickAdd}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold"
+            style={{ background: 'var(--tg-theme-button-color)', color: 'var(--tg-theme-button-text-color)' }}
+          >
+            +
+          </button>
         </div>
         {product.cook_time_minutes && (
           <p
