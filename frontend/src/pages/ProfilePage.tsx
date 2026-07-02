@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Layout } from '../components/Layout'
 import { PageHeader } from '../components/PageHeader'
-import { fetchOrdersByPhone, fetchUserOrders } from '../lib/supabase'
+import { fetchOrdersByPhone, supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
 import { useSettingsStore, formatPrice } from '../store/settingsStore'
 import { t } from '../lib/i18n'
@@ -15,10 +15,11 @@ export function ProfilePage() {
   const lang = useSettingsStore((s) => s.language)
   
   const [phone, setPhone] = useState('')
+  const [orderId, setOrderId] = useState('')
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
-  const [autoLoaded, setAutoLoaded] = useState(false)
+  const [searchMode, setSearchMode] = useState<'phone' | 'orderId'>('phone')
 
   // Get Telegram user ID if available
   const telegramUserId = (() => {
@@ -47,11 +48,10 @@ export function ProfilePage() {
 
   // Auto-load orders if authenticated via Telegram
   useEffect(() => {
-    if (isAuthenticated && !autoLoaded) {
-      setAutoLoaded(true)
+    if (isAuthenticated && telegramUserId) {
       loadOrdersByTelegram()
     }
-  }, [isAuthenticated, autoLoaded])
+  }, [isAuthenticated, telegramUserId])
 
   const loadOrdersByTelegram = async () => {
     if (!telegramUserId) return
@@ -59,8 +59,15 @@ export function ProfilePage() {
     setLoading(true)
     setSearched(true)
     try {
-      const data = await fetchUserOrders('', telegramUserId)
-      setOrders(data)
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('telegram_user_id', telegramUserId)
+        .order('created_at', { ascending: false })
+      
+      if (!error && data) {
+        setOrders(data as Order[])
+      }
     } catch (error) {
       console.error('Failed to fetch orders:', error)
       setOrders([])
@@ -69,7 +76,7 @@ export function ProfilePage() {
     }
   }
 
-  const handleSearch = async () => {
+  const handleSearchByPhone = async () => {
     if (!phone.trim()) return
     
     console.log('[ProfilePage] Searching for phone:', phone.trim())
@@ -82,12 +89,41 @@ export function ProfilePage() {
     } catch {}
     
     try {
-      console.log('[ProfilePage] Calling fetchOrdersByPhone...')
       const data = await fetchOrdersByPhone(phone.trim())
       console.log('[ProfilePage] Orders found:', data.length, data)
       setOrders(data)
     } catch (error) {
       console.error('[ProfilePage] Failed to fetch orders:', error)
+      setOrders([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSearchByOrderId = async () => {
+    if (!orderId.trim()) return
+    
+    console.log('[ProfilePage] Searching for order ID:', orderId.trim())
+    setLoading(true)
+    setSearched(true)
+    
+    try {
+      // Search by order ID (first 8 characters or full UUID)
+      const searchId = orderId.trim().toLowerCase()
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .or(`id.ilike.${searchId}%,id.eq.${searchId}`)
+        .order('created_at', { ascending: false })
+      
+      if (!error && data) {
+        console.log('[ProfilePage] Orders found by ID:', data.length, data)
+        setOrders(data as Order[])
+      } else {
+        setOrders([])
+      }
+    } catch (error) {
+      console.error('[ProfilePage] Failed to fetch order:', error)
       setOrders([])
     } finally {
       setLoading(false)
@@ -159,40 +195,84 @@ export function ProfilePage() {
         </section>
       )}
 
-      {/* Phone search for orders (always show, but secondary if authenticated) */}
-      <section className="px-4 pb-6">
+      {/* Search mode toggle */}
+      <section className="px-4 pb-4">
         <h2 className="mb-3 text-lg font-semibold" style={{ color: 'var(--tg-theme-text-color)' }}>
           {t(lang, 'my_orders')}
         </h2>
         
-        {!isAuthenticated && (
-          <p className="text-sm mb-3" style={{ color: 'var(--tg-theme-hint-color)' }}>
-            {lang === 'uz' ? 'Buyurtmalarni telefon raqami orqali qidiring' : 
-             lang === 'ru' ? 'Найдите заказы по номеру телефона' : 
-             'Search orders by phone number'}
-          </p>
-        )}
-        
-        <div className="flex gap-2">
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder={t(lang, 'order_phone_placeholder')}
-            className="flex-1 rounded-xl border-0 px-4 py-3 text-base outline-none"
-            style={{ background: 'var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-text-color)' }}
-          />
+        <div className="flex gap-2 mb-3">
           <button
             type="button"
-            onClick={handleSearch}
-            disabled={loading || !phone.trim()}
-            className="rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-50"
-            style={{ background: 'var(--tg-theme-button-color)', color: 'var(--tg-theme-button-text-color)' }}
+            onClick={() => setSearchMode('phone')}
+            className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
+              searchMode === 'phone' ? 'opacity-100' : 'opacity-50'
+            }`}
+            style={{ 
+              background: searchMode === 'phone' ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)',
+              color: searchMode === 'phone' ? 'var(--tg-theme-button-text-color)' : 'var(--tg-theme-text-color)'
+            }}
           >
-            🔍
+            📱 {lang === 'uz' ? 'Telefon' : lang === 'ru' ? 'Телефон' : 'Phone'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setSearchMode('orderId')}
+            className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
+              searchMode === 'orderId' ? 'opacity-100' : 'opacity-50'
+            }`}
+            style={{ 
+              background: searchMode === 'orderId' ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)',
+              color: searchMode === 'orderId' ? 'var(--tg-theme-button-text-color)' : 'var(--tg-theme-text-color)'
+            }}
+          >
+            🔢 {lang === 'uz' ? 'Buyurtma №' : lang === 'ru' ? 'Заказ №' : 'Order #'}
           </button>
         </div>
+        
+        {searchMode === 'phone' ? (
+          <div className="flex gap-2">
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearchByPhone()}
+              placeholder={t(lang, 'order_phone_placeholder')}
+              className="flex-1 rounded-xl border-0 px-4 py-3 text-base outline-none"
+              style={{ background: 'var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-text-color)' }}
+            />
+            <button
+              type="button"
+              onClick={handleSearchByPhone}
+              disabled={loading || !phone.trim()}
+              className="rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-50"
+              style={{ background: 'var(--tg-theme-button-color)', color: 'var(--tg-theme-button-text-color)' }}
+            >
+              🔍
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={orderId}
+              onChange={(e) => setOrderId(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearchByOrderId()}
+              placeholder={lang === 'uz' ? 'Buyurtma raqami (masalan: 5b8d0204)' : lang === 'ru' ? 'Номер заказа (например: 5b8d0204)' : 'Order number (e.g. 5b8d0204)'}
+              className="flex-1 rounded-xl border-0 px-4 py-3 text-base outline-none"
+              style={{ background: 'var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-text-color)' }}
+            />
+            <button
+              type="button"
+              onClick={handleSearchByOrderId}
+              disabled={loading || !orderId.trim()}
+              className="rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-50"
+              style={{ background: 'var(--tg-theme-button-color)', color: 'var(--tg-theme-button-text-color)' }}
+            >
+              🔍
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Orders list */}

@@ -188,6 +188,98 @@ async function notifyAdminNewOrder(
   })
 }
 
+/**
+ * Send order confirmation to customer via Telegram
+ */
+async function sendOrderConfirmationToCustomer(
+  botToken: string,
+  telegramUserId: number,
+  order: {
+    id: string
+    total: number
+    customer_name: string | null
+    items: Array<{ name: string; quantity: number; price: number }>
+  },
+  langCode: string = 'ru',
+) {
+  const safeName = order.customer_name ? escapeHtml(order.customer_name) : ''
+  const orderId = order.id.slice(0, 8)
+  
+  const itemLines = order.items
+    .map(
+      (i) =>
+        `  • ${escapeHtml(i.name)} × ${i.quantity} — ${(i.price * i.quantity).toLocaleString('ru')} сум`,
+    )
+    .join('\n')
+
+  let text: string
+  let btnTrack: string
+
+  if (langCode.startsWith('uz')) {
+    text = [
+      `✅ <b>Buyurtmangiz qabul qilindi!</b>`,
+      '',
+      `📋 <b>Buyurtma №:</b> ${orderId}`,
+      safeName ? `👤 <b>Mijoz:</b> ${safeName}` : null,
+      '',
+      `<b>Tarkibi:</b>`,
+      itemLines,
+      '',
+      `💰 <b>Jami:</b> ${order.total.toLocaleString('ru')} so'm`,
+      '',
+      `⏳ Buyurtmangiz tayyorlanmoqda. Tez orada siz bilan bog'lanamiz!`,
+    ].filter(l => l !== null).join('\n')
+    btnTrack = '📦 Buyurtmani kuzatish'
+  } else if (langCode.startsWith('en')) {
+    text = [
+      `✅ <b>Your order has been received!</b>`,
+      '',
+      `📋 <b>Order #:</b> ${orderId}`,
+      safeName ? `👤 <b>Customer:</b> ${safeName}` : null,
+      '',
+      `<b>Items:</b>`,
+      itemLines,
+      '',
+      `💰 <b>Total:</b> ${order.total.toLocaleString('ru')} sum`,
+      '',
+      `⏳ Your order is being prepared. We will contact you soon!`,
+    ].filter(l => l !== null).join('\n')
+    btnTrack = '📦 Track Order'
+  } else {
+    // Russian
+    text = [
+      `✅ <b>Ваш заказ принят!</b>`,
+      '',
+      `📋 <b>Заказ №:</b> ${orderId}`,
+      safeName ? `👤 <b>Клиент:</b> ${safeName}` : null,
+      '',
+      `<b>Состав:</b>`,
+      itemLines,
+      '',
+      `💰 <b>Итого:</b> ${order.total.toLocaleString('ru')} сум`,
+      '',
+      `⏳ Ваш заказ готовится. Мы скоро свяжемся с вами!`,
+    ].filter(l => l !== null).join('\n')
+    btnTrack = '📦 Отследить заказ'
+  }
+
+  const miniAppUrl = Deno.env.get('MINI_APP_URL')
+  
+  await sendMessage(botToken, telegramUserId, text, {
+    parse_mode: 'HTML',
+    reply_markup: miniAppUrl ? {
+      inline_keyboard: [
+        [
+          {
+            text: btnTrack,
+            web_app: { url: `${miniAppUrl}/profile` },
+          },
+        ],
+      ],
+    } : undefined,
+  })
+}
+
 Deno.serve(async (req) => {
   // Validate required environment variables
   const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN')
@@ -233,7 +325,24 @@ Deno.serve(async (req) => {
         })
       }
 
+      // Notify admin
       await notifyAdminNewOrder(botToken, adminChatId, order)
+      
+      // Send confirmation to customer if telegram_user_id is provided
+      if (order.telegram_user_id) {
+        try {
+          await sendOrderConfirmationToCustomer(
+            botToken,
+            order.telegram_user_id,
+            order,
+            order.lang_code || 'ru'
+          )
+          console.log(`[NotifyOrder] Sent confirmation to customer ${order.telegram_user_id}`)
+        } catch (customerErr) {
+          console.error('[NotifyOrder] Failed to notify customer:', customerErr)
+          // Don't fail the whole request if customer notification fails
+        }
+      }
       
       return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
