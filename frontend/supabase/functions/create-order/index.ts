@@ -251,6 +251,28 @@ Deno.serve(async (req) => {
       ? escapeHtml(body.comment.trim())
       : null
 
+    // Upsert profile by phone number
+    try {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            phone: sanitizedPhone,
+            first_name: sanitizedName,
+            telegram_id: body.telegram_user_id ?? null,
+            username: body.telegram_username ?? null,
+          },
+          { onConflict: 'phone' }
+        )
+      
+      if (profileError) {
+        console.error('[CreateOrder] Failed to upsert profile:', profileError)
+        // Don't fail the order if profile creation fails
+      }
+    } catch (profileErr) {
+      console.error('[CreateOrder] Profile upsert error:', profileErr)
+    }
+
     // Create order with validated data
     const { data: order, error: orderError } = await supabase
       .from('orders')

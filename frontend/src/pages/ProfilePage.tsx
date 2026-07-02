@@ -4,13 +4,11 @@ import { motion } from 'framer-motion'
 import { Layout } from '../components/Layout'
 import { PageHeader } from '../components/PageHeader'
 import { fetchOrdersByPhone } from '../lib/supabase'
-import { useAuthStore } from '../store/authStore'
 import { useSettingsStore, formatPrice } from '../store/settingsStore'
 import { t } from '../lib/i18n'
 import type { Order } from '../types'
 
 export function ProfilePage() {
-  const user = useAuthStore((s) => s.user)
   const lang = useSettingsStore((s) => s.language)
   
   const [phone, setPhone] = useState('')
@@ -18,7 +16,7 @@ export function ProfilePage() {
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
 
-  // Load saved phone
+  // Load saved phone from localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem('choyxona-last-phone')
@@ -31,6 +29,12 @@ export function ProfilePage() {
     
     setLoading(true)
     setSearched(true)
+    
+    // Save phone for future use
+    try {
+      localStorage.setItem('choyxona-last-phone', phone.trim())
+    } catch {}
+    
     try {
       const data = await fetchOrdersByPhone(phone.trim())
       setOrders(data)
@@ -43,8 +47,15 @@ export function ProfilePage() {
   }
 
   const getStatusLabel = (status: Order['status']) => {
-    const key = `status_${status}` as const
-    return t(lang, key as keyof typeof import('../lib/i18n').translations.ru)
+    const statusMap: Record<string, string> = {
+      pending: lang === 'uz' ? 'Kutilmoqda' : lang === 'ru' ? 'Ожидает' : 'Pending',
+      confirmed: lang === 'uz' ? 'Tasdiqlandi' : lang === 'ru' ? 'Подтверждён' : 'Confirmed',
+      preparing: lang === 'uz' ? 'Tayyorlanmoqda' : lang === 'ru' ? 'Готовится' : 'Preparing',
+      ready: lang === 'uz' ? 'Tayyor' : lang === 'ru' ? 'Готов' : 'Ready',
+      delivered: lang === 'uz' ? 'Yetkazildi' : lang === 'ru' ? 'Доставлен' : 'Delivered',
+      cancelled: lang === 'uz' ? 'Bekor qilindi' : lang === 'ru' ? 'Отменён' : 'Cancelled',
+    }
+    return statusMap[status] || status
   }
 
   const getStatusColor = (status: Order['status']) => {
@@ -59,43 +70,9 @@ export function ProfilePage() {
     }
   }
 
-  const displayName = user && user.id !== 'dev-user'
-    ? [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Guest'
-    : 'Guest'
-
   return (
     <Layout>
       <PageHeader title={t(lang, 'profile_title')} subtitle={t(lang, 'profile_subtitle')} />
-
-      {/* User info */}
-      {user && user.id !== 'dev-user' && (
-        <section className="px-4 pb-6">
-          <div className="glass-card rounded-2xl p-4">
-            <div className="flex items-center gap-4">
-              <div
-                className="flex h-14 w-14 items-center justify-center rounded-full text-2xl"
-                style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
-              >
-                {user.photo_url ? (
-                  <img src={user.photo_url} alt="" className="h-full w-full rounded-full object-cover" />
-                ) : (
-                  '👤'
-                )}
-              </div>
-              <div>
-                <p className="font-semibold" style={{ color: 'var(--tg-theme-text-color)' }}>
-                  {displayName}
-                </p>
-                {user.username && (
-                  <p className="text-sm" style={{ color: 'var(--tg-theme-hint-color)' }}>
-                    @{user.username}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Phone search for orders */}
       <section className="px-4 pb-6">
@@ -107,6 +84,7 @@ export function ProfilePage() {
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder={t(lang, 'order_phone_placeholder')}
             className="flex-1 rounded-xl border-0 px-4 py-3 text-base outline-none"
             style={{ background: 'var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-text-color)' }}
@@ -185,7 +163,7 @@ export function ProfilePage() {
         )}
       </section>
 
-      {/* Settings link */}
+      {/* About link */}
       <section className="px-4 pb-6">
         <Link
           to="/about"
