@@ -1,11 +1,16 @@
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Layout } from '../components/Layout'
 import { PageHeader } from '../components/PageHeader'
 import { WebApp } from '../lib/telegram'
 import { useCartStore } from '../store/cartStore'
+import { useAppStore } from '../store/appStore'
 import { useSettingsStore, formatPrice } from '../store/settingsStore'
 import { t, getProductName } from '../lib/i18n'
+import type { Product } from '../types'
+
+const ADD_MORE_CATEGORIES = ['salads', 'drinks', 'desserts', 'bread']
 
 export function CartPage() {
   const navigate = useNavigate()
@@ -13,7 +18,34 @@ export function CartPage() {
   const totalPrice = useCartStore((s) => s.totalPrice())
   const updateQuantity = useCartStore((s) => s.updateQuantity)
   const removeItem = useCartStore((s) => s.removeItem)
+  const addItem = useCartStore((s) => s.addItem)
+  const { products, loadProducts } = useAppStore()
   const lang = useSettingsStore((s) => s.language)
+
+  const [addMoreProducts, setAddMoreProducts] = useState<Product[]>([])
+
+  useEffect(() => {
+    if (products.length === 0) {
+      loadProducts()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (products.length > 0) {
+      const extras = products.filter(p => ADD_MORE_CATEGORIES.includes(p.category))
+      setAddMoreProducts(extras)
+    }
+  }, [products])
+
+  const getCategoryLabel = (cat: string) => {
+    const labels: Record<string, Record<string, string>> = {
+      salads: { uz: '🥗 Salatlar', ru: '🥗 Салаты' },
+      drinks: { uz: '🥤 Ichimliklar', ru: '🥤 Напитки' },
+      desserts: { uz: '🍰 Desertlar', ru: '🍰 Десерты' },
+      bread: { uz: '🫓 Non va somsa', ru: '🫓 Хлеб и самса' },
+    }
+    return labels[cat]?.[lang] || labels[cat]?.['ru'] || cat
+  }
 
   return (
     <Layout>
@@ -108,6 +140,44 @@ export function CartPage() {
               </motion.div>
             ))}
           </section>
+
+          {/* Add more section */}
+          {addMoreProducts.length > 0 && (
+            <section className="px-4 pt-4">
+              <h3 className="mb-3 text-sm font-semibold" style={{ color: 'var(--tg-theme-text-color)' }}>
+                {lang === 'uz' ? 'Buyurtmangizga qo\'shing' : 'Добавить к заказу'}
+              </h3>
+              {ADD_MORE_CATEGORIES.map(cat => {
+                const catProducts = addMoreProducts.filter(p => p.category === cat)
+                if (catProducts.length === 0) return null
+                return (
+                  <div key={cat} className="mb-3">
+                    <p className="text-xs font-medium mb-2" style={{ color: 'var(--tg-theme-hint-color)' }}>
+                      {getCategoryLabel(cat)}
+                    </p>
+                    <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+                      {catProducts.map(product => (
+                        <button
+                          key={product.id}
+                          type="button"
+                          onClick={() => {
+                            addItem(product, 1)
+                            try { WebApp.HapticFeedback.impactOccurred('light') } catch {}
+                          }}
+                          className="flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium"
+                          style={{ background: 'var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-text-color)' }}
+                        >
+                          <span className="truncate max-w-[100px]">{getProductName(product, lang)}</span>
+                          <span style={{ color: 'var(--tg-theme-hint-color)' }}>{formatPrice(product.price)}</span>
+                          <span style={{ color: 'var(--tg-theme-accent-text-color)' }}>+</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </section>
+          )}
 
           <section className="px-4 py-6">
             <div

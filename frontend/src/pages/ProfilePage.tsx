@@ -15,11 +15,9 @@ export function ProfilePage() {
   const lang = useSettingsStore((s) => s.language)
   
   const [phone, setPhone] = useState('')
-  const [orderId, setOrderId] = useState('')
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
-  const [searchMode, setSearchMode] = useState<'phone' | 'orderId'>('phone')
 
   // Get Telegram user ID if available
   const telegramUserId = (() => {
@@ -100,39 +98,6 @@ export function ProfilePage() {
     }
   }
 
-  const handleSearchByOrderId = async () => {
-    if (!orderId.trim()) return
-    
-    console.log('[ProfilePage] Searching for order ID:', orderId.trim())
-    setLoading(true)
-    setSearched(true)
-    
-    try {
-      // Search by order ID (first 8 characters or full UUID)
-      const searchId = orderId.trim().toLowerCase()
-      
-      // Use textual filter with cast: id::text like 'prefix%'
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .filter('id::text', 'ilike', `${searchId}%`)
-        .order('created_at', { ascending: false })
-      
-      if (!error && data) {
-        console.log('[ProfilePage] Orders found by ID:', data.length, data)
-        setOrders(data as Order[])
-      } else {
-        console.log('[ProfilePage] Order lookup error:', error)
-        setOrders([])
-      }
-    } catch (error) {
-      console.error('[ProfilePage] Failed to fetch order:', error)
-      setOrders([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const getStatusLabel = (status: Order['status']) => {
     const statusMap: Record<string, string> = {
       pending: lang === 'uz' ? 'Kutilmoqda' : lang === 'ru' ? 'Ожидает' : 'Pending',
@@ -198,84 +163,32 @@ export function ProfilePage() {
         </section>
       )}
 
-      {/* Search mode toggle */}
+      {/* Phone search */}
       <section className="px-4 pb-4">
         <h2 className="mb-3 text-lg font-semibold" style={{ color: 'var(--tg-theme-text-color)' }}>
           {t(lang, 'my_orders')}
         </h2>
         
-        <div className="flex gap-2 mb-3">
+        <div className="flex gap-2">
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearchByPhone()}
+            placeholder={t(lang, 'order_phone_placeholder')}
+            className="flex-1 rounded-xl border-0 px-4 py-3 text-base outline-none"
+            style={{ background: 'var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-text-color)' }}
+          />
           <button
             type="button"
-            onClick={() => setSearchMode('phone')}
-            className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
-              searchMode === 'phone' ? 'opacity-100' : 'opacity-50'
-            }`}
-            style={{ 
-              background: searchMode === 'phone' ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)',
-              color: searchMode === 'phone' ? 'var(--tg-theme-button-text-color)' : 'var(--tg-theme-text-color)'
-            }}
+            onClick={handleSearchByPhone}
+            disabled={loading || !phone.trim()}
+            className="rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-50"
+            style={{ background: 'var(--tg-theme-button-color)', color: 'var(--tg-theme-button-text-color)' }}
           >
-            📱 {lang === 'uz' ? 'Telefon' : lang === 'ru' ? 'Телефон' : 'Phone'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setSearchMode('orderId')}
-            className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
-              searchMode === 'orderId' ? 'opacity-100' : 'opacity-50'
-            }`}
-            style={{ 
-              background: searchMode === 'orderId' ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)',
-              color: searchMode === 'orderId' ? 'var(--tg-theme-button-text-color)' : 'var(--tg-theme-text-color)'
-            }}
-          >
-            🔢 {lang === 'uz' ? 'Buyurtma №' : lang === 'ru' ? 'Заказ №' : 'Order #'}
+            🔍
           </button>
         </div>
-        
-        {searchMode === 'phone' ? (
-          <div className="flex gap-2">
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearchByPhone()}
-              placeholder={t(lang, 'order_phone_placeholder')}
-              className="flex-1 rounded-xl border-0 px-4 py-3 text-base outline-none"
-              style={{ background: 'var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-text-color)' }}
-            />
-            <button
-              type="button"
-              onClick={handleSearchByPhone}
-              disabled={loading || !phone.trim()}
-              className="rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-50"
-              style={{ background: 'var(--tg-theme-button-color)', color: 'var(--tg-theme-button-text-color)' }}
-            >
-              🔍
-            </button>
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={orderId}
-              onChange={(e) => setOrderId(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearchByOrderId()}
-              placeholder={lang === 'uz' ? 'Buyurtma raqami (masalan: 5b8d0204)' : lang === 'ru' ? 'Номер заказа (например: 5b8d0204)' : 'Order number (e.g. 5b8d0204)'}
-              className="flex-1 rounded-xl border-0 px-4 py-3 text-base outline-none"
-              style={{ background: 'var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-text-color)' }}
-            />
-            <button
-              type="button"
-              onClick={handleSearchByOrderId}
-              disabled={loading || !orderId.trim()}
-              className="rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-50"
-              style={{ background: 'var(--tg-theme-button-color)', color: 'var(--tg-theme-button-text-color)' }}
-            >
-              🔍
-            </button>
-          </div>
-        )}
       </section>
 
       {/* Orders list */}

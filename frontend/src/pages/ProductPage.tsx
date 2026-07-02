@@ -38,7 +38,7 @@ export function ProductPage() {
 
     addItem(product, quantity)
     try { WebApp.HapticFeedback.notificationOccurred('success') } catch {}
-    navigate('/cart')
+    // Stay on page - user navigates to cart manually
   }
 
   if (loading) {
