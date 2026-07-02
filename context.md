@@ -2,9 +2,8 @@
 
 > **Last Updated:** July 2, 2026  
 > **Admin Telegram ID:** 943196988  
-> **GitHub:** https://github.com/umarmax/Eski-Shahar-food  
-> **Supabase Project:** icjrhufmtqedmihjogco  
-> **Bot Token:** 8973214144:AAEgVDPaptqRy-kB92-_QyNv-Im3N_UTcRc
+> **GitHub:** https://github.com/umarmax/Eski-Shahar-food (Public)  
+> **Supabase Project:** icjrhufmtqedmihjogco
 
 ---
 
