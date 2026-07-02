@@ -1,9 +1,8 @@
 import { motion } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
 import { Layout } from '../components/Layout'
 import { PageHeader } from '../components/PageHeader'
 import { useSettingsStore, type ThemeMode } from '../store/settingsStore'
-import { t, type Language, LANGUAGES } from '../lib/i18n'
+import { t, LANGUAGES } from '../lib/i18n'
 
 const themes: { code: ThemeMode; labelKey: 'theme_auto' | 'theme_light' | 'theme_dark'; icon: string }[] = [
   { code: 'auto', labelKey: 'theme_auto', icon: '🔄' },
@@ -12,7 +11,6 @@ const themes: { code: ThemeMode; labelKey: 'theme_auto' | 'theme_light' | 'theme
 ]
 
 export function SettingsPage() {
-  const navigate = useNavigate()
   const language = useSettingsStore((s) => s.language)
   const theme = useSettingsStore((s) => s.theme)
   const setLanguage = useSettingsStore((s) => s.setLanguage)

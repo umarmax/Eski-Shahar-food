@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Layout } from '../components/Layout'
 import { PageHeader } from '../components/PageHeader'
@@ -21,7 +20,6 @@ const CAFE_INFO = {
 }
 
 export function AboutPage() {
-  const navigate = useNavigate()
   const lang = useSettingsStore((s) => s.language)
 
   const getAddress = () => {

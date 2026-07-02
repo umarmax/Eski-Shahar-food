@@ -25,7 +25,7 @@ export function ProductPage() {
 
     async function load() {
       setLoading(true)
-      const data = await getProductById(id)
+      const data = await getProductById(id!)
       setProduct(data)
       setLoading(false)
     }
