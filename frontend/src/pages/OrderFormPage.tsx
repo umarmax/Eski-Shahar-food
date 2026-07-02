@@ -119,14 +119,7 @@ export function OrderFormPage() {
 
       clearCart()
       try { WebApp.HapticFeedback.notificationOccurred('success') } catch {}
-      try {
-        WebApp.showAlert(
-          `№${order.id.slice(0, 8)} — ${t(lang, 'order_success')}`,
-          () => navigate('/profile'),
-        )
-      } catch {
-        navigate('/profile')
-      }
+      navigate('/profile')
     } catch (error) {
       try { WebApp.HapticFeedback.notificationOccurred('error') } catch {}
       try {

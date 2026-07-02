@@ -111,26 +111,12 @@ export function ProfilePage() {
       // Search by order ID (first 8 characters or full UUID)
       const searchId = orderId.trim().toLowerCase()
       
-      // Try exact match first (full UUID)
-      let { data, error } = await supabase
+      // Use textual filter with cast: id::text like 'prefix%'
+      const { data, error } = await supabase
         .from('orders')
         .select('*')
-        .eq('id', searchId)
+        .filter('id::text', 'ilike', `${searchId}%`)
         .order('created_at', { ascending: false })
-      
-      // If no exact match, try prefix match using ilike
-      if ((!data || data.length === 0) && searchId.length >= 4) {
-        const result = await supabase
-          .from('orders')
-          .select('*')
-          .ilike('id', `${searchId}%`)
-          .order('created_at', { ascending: false })
-        
-        if (!result.error && result.data) {
-          data = result.data
-          error = null
-        }
-      }
       
       if (!error && data) {
         console.log('[ProfilePage] Orders found by ID:', data.length, data)

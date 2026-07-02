@@ -38,15 +38,7 @@ export function ProductPage() {
 
     addItem(product, quantity)
     try { WebApp.HapticFeedback.notificationOccurred('success') } catch {}
-    
-    try {
-      WebApp.showAlert(
-        `${getProductName(product, lang)} ${t(lang, 'added_to_cart')}`,
-        () => navigate('/cart'),
-      )
-    } catch {
-      navigate('/cart')
-    }
+    navigate('/cart')
   }
 
   if (loading) {
