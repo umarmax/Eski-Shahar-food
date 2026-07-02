@@ -1,76 +1,260 @@
 # Session Context: Choyxona Telegram Mini App
 
-## Admin Telegram ID: 6314294625
+> **Last Updated:** July 2, 2026  
+> **Admin Telegram ID:** 6314294625  
+> **GitHub:** https://github.com/umarmax/eski-shahar
 
-## What has been implemented so far:
+---
 
-### Session 1: Core Setup
-1. Next.js 15 frontend + Express 5 backend scaffolded.
-2. Zustand cart, Prisma ORM with PostgreSQL schema (Product, Order, User, etc).
-3. `telegraf` bot installed: `/start` command shows a Web App button.
-4. `notifyOperatorAndUser` in `bot.ts`: sends operator a full order message + coordinates pin; sends user a confirmation.
-5. Env files created for both frontend and backend.
+## 🏗️ Current Architecture
 
-### Session 2: 4 Major Features (COMPLETED)
+### Tech Stack (Migrated from Next.js/Express)
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 19 + Vite 8 + TypeScript |
+| State Management | Zustand |
+| Styling | Tailwind CSS + Framer Motion |
+| Backend | Supabase (PostgreSQL + Edge Functions) |
+| Telegram SDK | @twa-dev/sdk |
+| Deployment | Vercel (frontend) + Supabase (backend) |
 
-#### 1. Protected Admin Panel
-- **Backend**: `isAdmin` middleware checks `x-telegram-id` header against `ADMIN_TELEGRAM_ID` env var.
-- All `/api/admin/*` routes protected.
-- **Frontend**: `BottomNav.tsx` conditionally renders Admin tab only if `webApp.initDataUnsafe.user.id === NEXT_PUBLIC_ADMIN_TELEGRAM_ID`.
-- `api.ts` uses `getAdminHeaders()` helper to send `x-telegram-id` header with all admin requests.
+### Why We Migrated
+- **From:** Next.js 15 + Express 5 + Prisma + Railway
+- **To:** Vite + Supabase
+- **Reason:** Simpler architecture, faster builds, serverless Edge Functions, built-in auth
 
-#### 2. Menu Management (CRUD)
-- **Backend**: `POST/PUT/PATCH/DELETE /api/admin/products` endpoints added.
-- **Frontend**: Admin page has "Menu CRUD" tab listing all products with Edit / Delete buttons.
-- `app/admin/menu/[id]/page.tsx` — full form to create or edit a product (name in 3 langs, price, image URL, category, flags).
+---
 
-#### 3. About Café Page
-- `app/about/page.tsx` — static page with address, Yandex Maps link, working hours (10:00-23:00), clickable phone numbers, Telegram & Instagram links.
-- "About" tab (Info icon) added to `BottomNav.tsx`.
+## 📁 Project Structure
 
-#### 4. Checkout: Phone + Location
-- Checkout page now has **both** a Telegram `requestContact()` button AND a manual `<input type="tel">` fallback.
-- `requestLocation()` still uses Telegram LocationManager.
-- The "Confirm Order" button is disabled until phone is filled.
-- Full JSON (`items`, `phone`, `latitude`, `longitude`, `promoCode`, `comment`) sent to `POST /api/orders`.
-- Bot then sends operator the details + a Telegram location pin.
-
-## Current State of .env Variables:
-
-### backend/.env
 ```
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/choyxona?schema=public
-PORT=3001
-FRONTEND_URL=http://localhost:3000
-TELEGRAM_BOT_TOKEN=<SET THIS FROM BOTFATHER>
-OPERATOR_CHAT_ID=<SET THIS - your operator group chat ID>
-ADMIN_TELEGRAM_ID=6314294625
+eski-shahar/
+├── frontend/                    # Main application
+│   ├── src/
+│   │   ├── components/          # React components
+│   │   │   ├── Layout.tsx       # Bottom navigation
+│   │   │   ├── ProductCard.tsx  # Food item cards
+│   │   │   ├── CategoryList.tsx # Food categories
+│   │   │   ├── HeroSection.tsx  # Café hero banner
+│   │   │   ├── USPBanners.tsx   # Unique selling points
+│   │   │   ├── PageHeader.tsx   # Page headers
+│   │   │   ├── ErrorBoundary.tsx
+│   │   │   └── TelegramMainButtonSync.tsx
+│   │   ├── pages/               # Page components
+│   │   │   ├── HomePage.tsx     # Landing page
+│   │   │   ├── MenuPage.tsx     # Food catalog
+│   │   │   ├── ProductPage.tsx  # Food item detail
+│   │   │   ├── CartPage.tsx     # Shopping cart
+│   │   │   ├── OrderFormPage.tsx # Checkout form
+│   │   │   ├── ProfilePage.tsx  # User profile
+│   │   │   ├── SettingsPage.tsx # Language/theme settings
+│   │   │   └── AboutPage.tsx    # Café info
+│   │   ├── store/               # Zustand stores
+│   │   │   ├── settingsStore.ts # Language, theme, currency
+│   │   │   ├── authStore.ts     # Auth state
+│   │   │   ├── cartStore.ts     # Cart management
+│   │   │   └── appStore.ts      # Products/menu state
+│   │   ├── lib/                 # Utilities
+│   │   │   ├── telegram.ts      # Telegram SDK wrapper
+│   │   │   ├── supabase.ts      # Supabase client
+│   │   │   ├── auth.ts          # Telegram auth helpers
+│   │   │   └── i18n.ts          # Translations (UZ/RU/EN)
+│   │   ├── data/                # Mock/fallback data
+│   │   │   ├── mockProducts.ts  # Fallback menu
+│   │   │   └── categories.ts    # Food categories
+│   │   ├── types/
+│   │   │   └── index.ts         # TypeScript types
+│   │   ├── App.tsx              # Router + AnimatePresence
+│   │   ├── main.tsx             # Entry point
+│   │   └── index.css            # Choyxona theme
+│   ├── supabase/
+│   │   ├── migrations/
+│   │   │   └── 001_initial_schema.sql  # Database schema
+│   │   ├── seed.sql             # Sample menu data
+│   │   └── functions/           # Edge Functions
+│   │       ├── telegram-auth/   # HMAC validation
+│   │       ├── telegram-bot/    # Bot webhook + notifications
+│   │       └── create-order/    # Secure order creation
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── vercel.json
+│   └── .env.example
+├── context.md                   # This file
+├── implementation_plan.md       # Detailed progress tracking
+└── README.md
 ```
 
-### frontend/.env
+---
+
+## 🔑 Environment Variables
+
+### Frontend (.env)
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_TELEGRAM_BOT_USERNAME=eskishahar_bot
 ```
-NEXT_PUBLIC_API_URL=http://localhost:3001
-NEXT_PUBLIC_ADMIN_TELEGRAM_ID=6314294625
+
+### Supabase Edge Function Secrets
+```
+TELEGRAM_BOT_TOKEN=<from @BotFather>
+TELEGRAM_ADMIN_CHAT_ID=6314294625
+MINI_APP_URL=https://your-app.vercel.app
 ```
 
-## GitHub
-- Repo: https://github.com/umarmax/eski-shahar
-- Latest commit: `feat: Admin panel with CRUD, About page, protected routes, checkout improvements`
+---
 
-## Next Steps: DEPLOYMENT ON RAILWAY
+## 🗄️ Database Schema (Supabase PostgreSQL)
 
-### To deploy:
-1. Go to https://railway.app → New Project → "Deploy from GitHub Repo" → select `umarmax/eski-shahar`
-2. Add a **PostgreSQL** plugin in Railway dashboard.
-3. Create a new Railway service for the backend (`choyxona/backend`):
-   - Set Root Directory: `choyxona/backend`
-   - Build Command: `npm install && npx prisma generate && npm run build`
-   - Start Command: `node dist/index.js`
-   - Environment Variables (from the list above, using Railway's DATABASE_URL).
-4. Get the Railway backend URL (e.g. `https://choyxona-api.up.railway.app`).
-5. Deploy **frontend** to Vercel:
-   - Connect GitHub repo → set Root Directory to `choyxona/frontend`
-   - Environment Variables: `NEXT_PUBLIC_API_URL=<railway backend URL>`, `NEXT_PUBLIC_ADMIN_TELEGRAM_ID=6314294625`
-6. Update backend `FRONTEND_URL` to the Vercel URL.
-7. Run `npm run db:push` and `npm run db:seed` on Railway via CLI or shell.
-8. Set the Bot Menu Button URL in @BotFather to the Vercel URL.
+### Tables
+- **products** - Menu items (name in 3 langs, price, category, image, flags)
+- **orders** - Customer orders (items, total, status, phone, location)
+- **profiles** - User profiles (linked to Telegram ID)
+- **categories** - Food categories
+
+### Row Level Security (RLS)
+- Products: Public read, admin write
+- Orders: User can read own orders, admin can read all
+- Profiles: User can read/update own profile
+
+---
+
+## ⚡ Supabase Edge Functions
+
+### 1. telegram-auth
+- **Purpose:** Validate Telegram initData using HMAC-SHA256
+- **Endpoint:** `POST /functions/v1/telegram-auth`
+- **Returns:** User data if valid, 401 if invalid
+
+### 2. telegram-bot
+- **Purpose:** Handle Telegram bot webhook + send admin notifications
+- **Endpoint:** `POST /functions/v1/telegram-bot`
+- **Features:**
+  - `/start` command with Web App button
+  - Order notifications to admin (chat ID: 6314294625)
+  - Location pin for delivery orders
+
+### 3. create-order
+- **Purpose:** Securely create orders with validation
+- **Endpoint:** `POST /functions/v1/create-order`
+- **Validates:** Auth, items, phone, calculates total
+
+---
+
+## 🎨 Theme Colors (Choyxona)
+
+| Color | Hex | Usage |
+|-------|-----|-------|
+| Primary Brown | `#8B5E3C` | Buttons, links |
+| Gold Accent | `#C79A5D` | Highlights, accents |
+| Cream Background | `#F8F3EB` | Light mode background |
+| Dark Background | `#1c1c1e` | Dark mode background |
+
+---
+
+## 🌐 Multilanguage Support
+
+| Language | Code | Status |
+|----------|------|--------|
+| O'zbek | `uz` | ✅ Full |
+| Русский | `ru` | ✅ Full |
+| English | `en` | ✅ Full |
+
+---
+
+## 🚀 Deployment Guide
+
+### Step 1: Supabase Setup
+1. Create project at [supabase.com](https://supabase.com)
+2. Go to SQL Editor → Run `001_initial_schema.sql`
+3. Run `seed.sql` to populate menu
+4. Copy URL and anon key
+
+### Step 2: Deploy Edge Functions
+```bash
+# Install Supabase CLI
+npm install -g supabase
+
+# Login
+supabase login
+
+# Link project
+supabase link --project-ref your-project-ref
+
+# Deploy functions
+supabase functions deploy telegram-auth
+supabase functions deploy telegram-bot
+supabase functions deploy create-order
+
+# Set secrets
+supabase secrets set TELEGRAM_BOT_TOKEN=your-token
+supabase secrets set TELEGRAM_ADMIN_CHAT_ID=6314294625
+supabase secrets set MINI_APP_URL=https://your-app.vercel.app
+```
+
+### Step 3: Telegram Bot Setup
+1. Create bot via @BotFather (or use existing)
+2. Set webhook: `https://your-project.supabase.co/functions/v1/telegram-bot`
+3. Set Menu Button URL to your Vercel app URL
+
+### Step 4: Deploy to Vercel
+1. Push to GitHub
+2. Import in Vercel → Set root directory to `frontend`
+3. Add environment variables
+4. Deploy
+
+---
+
+## 📊 Implementation Status
+
+| Phase | Status |
+|-------|--------|
+| Project Setup | ✅ 100% |
+| Core Infrastructure | ✅ 100% |
+| State Management | ✅ 100% |
+| Components | ✅ 100% |
+| Pages | ✅ 100% |
+| App Entry & Router | ✅ 100% |
+| Types & Data | ✅ 100% |
+| Supabase Backend | ✅ 100% |
+| Configuration | ✅ 100% |
+
+**Overall: 100% Complete** 🎉
+
+---
+
+## 🔮 Future Enhancements
+
+### Medium Priority
+- [ ] Loading skeletons for better UX
+- [ ] Pull-to-refresh functionality
+- [ ] Order history page
+- [ ] Favorites functionality
+- [ ] Search functionality
+
+### Low Priority
+- [ ] Push notifications
+- [ ] Loyalty points system
+- [ ] Promo codes
+- [ ] Table reservation feature
+
+---
+
+## 📝 Session History
+
+### Session 1 (Legacy - Next.js)
+- Initial Next.js 15 + Express 5 setup
+- Prisma ORM with PostgreSQL
+- Telegraf bot integration
+
+### Session 2 (Legacy - Features)
+- Admin panel with CRUD
+- About page
+- Checkout improvements
+
+### Session 3 (Current - Migration)
+- Migrated to Vite + Supabase
+- Implemented all pages and components
+- Created Edge Functions
+- Full multilanguage support
+- Ready for deployment

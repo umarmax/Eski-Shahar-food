@@ -1,0 +1,119 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  /* Choyxona color palette - Old Tashkent inspired */
+  --color-walnut: #8B5E3C;
+  --color-golden-sand: #C79A5D;
+  --color-emerald: #2E6F57;
+  --color-cream-50: #F8F3EB;
+  --color-cream-100: #f5f0e8;
+  --color-cream-200: #ebe3d6;
+  --color-navy-900: #0f172a;
+  --color-navy-800: #1e293b;
+}
+
+:root {
+  --tg-theme-bg-color: #F8F3EB;
+  --tg-theme-text-color: #0f172a;
+  --tg-theme-hint-color: #64748b;
+  --tg-theme-link-color: #8B5E3C;
+  --tg-theme-button-color: #8B5E3C;
+  --tg-theme-button-text-color: #F8F3EB;
+  --tg-theme-secondary-bg-color: #f1f5f9;
+  --tg-theme-accent-text-color: #C79A5D;
+  --tg-theme-destructive-text-color: #ef4444;
+  --app-safe-top: env(safe-area-inset-top, 0px);
+  --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+[data-color-scheme='dark'] {
+  --tg-theme-bg-color: #1c1c1e;
+  --tg-theme-text-color: #f5f5f7;
+  --tg-theme-hint-color: #8e8e93;
+  --tg-theme-secondary-bg-color: #2c2c2e;
+  --tg-theme-button-color: #C79A5D;
+  --tg-theme-button-text-color: #1c1c1e;
+  --tg-theme-accent-text-color: #C79A5D;
+  --tg-theme-link-color: #C79A5D;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: var(--font-sans);
+  background-color: var(--tg-theme-bg-color);
+  color: var(--tg-theme-text-color);
+  overscroll-behavior: none;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+.app-shell {
+  min-height: 100dvh;
+  padding-top: var(--app-safe-top);
+  padding-bottom: calc(var(--app-safe-bottom) + 72px);
+  background: var(--tg-theme-bg-color);
+}
+
+.glass-card {
+  background: color-mix(in srgb, var(--tg-theme-secondary-bg-color) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--tg-theme-text-color) 8%, transparent);
+}
+
+.gradient-hero {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in srgb, var(--color-golden-sand) 18%, transparent), transparent),
+    var(--tg-theme-bg-color);
+}
+
+/* Uzbek pattern decorative element */
+.uzbek-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0L60 30L30 60L0 30z' fill='none' stroke='%23C79A5D' stroke-width='0.5' opacity='0.1'/%3E%3C/svg%3E");
+  background-size: 30px 30px;
+}
+
+/* Food image placeholder */
+.food-image {
+  background: linear-gradient(135deg, var(--color-cream-100) 0%, var(--color-cream-200) 100%);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--tg-theme-hint-color) 30%, transparent);
+  border-radius: 2px;
+}
+
+/* Hide scrollbar for horizontal scroll containers */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
