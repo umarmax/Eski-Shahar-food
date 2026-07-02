@@ -230,23 +230,8 @@ async function sendOrderConfirmationToCustomer(
       `⏳ Buyurtmangiz tayyorlanmoqda. Tez orada siz bilan bog'lanamiz!`,
     ].filter(l => l !== null).join('\n')
     btnTrack = '📦 Buyurtmani kuzatish'
-  } else if (langCode.startsWith('en')) {
-    text = [
-      `✅ <b>Your order has been received!</b>`,
-      '',
-      `📋 <b>Order #:</b> ${orderId}`,
-      safeName ? `👤 <b>Customer:</b> ${safeName}` : null,
-      '',
-      `<b>Items:</b>`,
-      itemLines,
-      '',
-      `💰 <b>Total:</b> ${order.total.toLocaleString('ru')} sum`,
-      '',
-      `⏳ Your order is being prepared. We will contact you soon!`,
-    ].filter(l => l !== null).join('\n')
-    btnTrack = '📦 Track Order'
   } else {
-    // Russian
+    // Russian (default for all non-Uzbek users)
     text = [
       `✅ <b>Ваш заказ принят!</b>`,
       '',
@@ -392,12 +377,8 @@ Deno.serve(async (req) => {
       greeting = `🍵 <b>Eski Shahar Choyxonasiga xush kelibsiz!</b> 🍵\n\nHurmatli <b>${firstName}</b>, sizni qabul qilishdan mamnunmiz!\n\n🏠 Bizning choyxonada:\n• 🍲 An'anaviy o'zbek taomlari\n• 🫖 Choy va shirinliklar\n• 🥗 Yangi salatlar\n• 🍢 Mazali kaboblar\n\n📍 <b>Manzil:</b> Toshkent, Eski Shahar ko'chasi\n📞 <b>Telefon:</b> ${MANAGER_PHONE}\n\nMenyuni ko'rish va buyurtma berish uchun quyidagi tugmani bosing! 👇`
       btnMenu = '🍽 Menyuni ochish'
       btnContact = '📞 Bog\'lanish'
-    } else if (langCode.startsWith('en')) {
-      greeting = `🍵 <b>Welcome to Eski Shahar Choyxona!</b> 🍵\n\nDear <b>${firstName}</b>, we are glad to welcome you!\n\n🏠 Our teahouse offers:\n• 🍲 Traditional Uzbek dishes\n• 🫖 Tea and sweets\n• 🥗 Fresh salads\n• 🍢 Delicious kebabs\n\n📍 <b>Address:</b> Tashkent, Eski Shahar street\n📞 <b>Phone:</b> ${MANAGER_PHONE}\n\nTap the button below to view our menu and place an order! 👇`
-      btnMenu = '🍽 Open Menu'
-      btnContact = '📞 Contact Us'
     } else {
-      // Russian
+      // Russian (default for all non-Uzbek users)
       greeting = `🍵 <b>Добро пожаловать в Eski Shahar Choyxona!</b> 🍵\n\nУважаемый <b>${firstName}</b>, мы рады приветствовать вас!\n\n🏠 В нашей чайхане:\n• 🍲 Традиционные узбекские блюда\n• 🫖 Чай и сладости\n• 🥗 Свежие салаты\n• 🍢 Вкусные шашлыки\n\n📍 <b>Адрес:</b> Ташкент, улица Эски Шахар\n📞 <b>Телефон:</b> ${MANAGER_PHONE}\n\nНажмите кнопку ниже, чтобы посмотреть меню и сделать заказ! 👇`
       btnMenu = '🍽 Открыть меню'
       btnContact = '📞 Связаться'
