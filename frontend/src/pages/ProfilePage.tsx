@@ -3,18 +3,33 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Layout } from '../components/Layout'
 import { PageHeader } from '../components/PageHeader'
-import { fetchOrdersByPhone } from '../lib/supabase'
+import { fetchOrdersByPhone, fetchUserOrders } from '../lib/supabase'
+import { useAuthStore } from '../store/authStore'
 import { useSettingsStore, formatPrice } from '../store/settingsStore'
 import { t } from '../lib/i18n'
+import { WebApp } from '../lib/telegram'
 import type { Order } from '../types'
 
 export function ProfilePage() {
+  const user = useAuthStore((s) => s.user)
   const lang = useSettingsStore((s) => s.language)
   
   const [phone, setPhone] = useState('')
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
+  const [autoLoaded, setAutoLoaded] = useState(false)
+
+  // Get Telegram user ID if available
+  const telegramUserId = (() => {
+    try {
+      return user?.telegram_id || WebApp.initDataUnsafe?.user?.id || null
+    } catch {
+      return null
+    }
+  })()
+
+  const isAuthenticated = telegramUserId && telegramUserId !== 0
 
   // Load saved phone from localStorage
   useEffect(() => {
@@ -23,6 +38,30 @@ export function ProfilePage() {
       if (saved) setPhone(saved)
     } catch {}
   }, [])
+
+  // Auto-load orders if authenticated via Telegram
+  useEffect(() => {
+    if (isAuthenticated && !autoLoaded) {
+      setAutoLoaded(true)
+      loadOrdersByTelegram()
+    }
+  }, [isAuthenticated, autoLoaded])
+
+  const loadOrdersByTelegram = async () => {
+    if (!telegramUserId) return
+    
+    setLoading(true)
+    setSearched(true)
+    try {
+      const data = await fetchUserOrders('', telegramUserId)
+      setOrders(data)
+    } catch (error) {
+      console.error('Failed to fetch orders:', error)
+      setOrders([])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSearch = async () => {
     if (!phone.trim()) return
@@ -70,15 +109,61 @@ export function ProfilePage() {
     }
   }
 
+  const displayName = user && user.id !== 'dev-user'
+    ? [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Guest'
+    : 'Guest'
+
   return (
     <Layout>
       <PageHeader title={t(lang, 'profile_title')} subtitle={t(lang, 'profile_subtitle')} />
 
-      {/* Phone search for orders */}
+      {/* Telegram User Info (if authenticated) */}
+      {isAuthenticated && user && (
+        <section className="px-4 pb-6">
+          <div className="glass-card rounded-2xl p-4">
+            <div className="flex items-center gap-4">
+              <div
+                className="flex h-14 w-14 items-center justify-center rounded-full text-2xl"
+                style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
+              >
+                {user.photo_url ? (
+                  <img src={user.photo_url} alt="" className="h-full w-full rounded-full object-cover" />
+                ) : (
+                  '👤'
+                )}
+              </div>
+              <div>
+                <p className="font-semibold" style={{ color: 'var(--tg-theme-text-color)' }}>
+                  {displayName}
+                </p>
+                {user.username && (
+                  <p className="text-sm" style={{ color: 'var(--tg-theme-hint-color)' }}>
+                    @{user.username}
+                  </p>
+                )}
+                <p className="text-xs mt-1" style={{ color: 'var(--tg-theme-link-color)' }}>
+                  ✓ {lang === 'uz' ? 'Telegram orqali kirgan' : lang === 'ru' ? 'Вход через Telegram' : 'Logged in via Telegram'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Phone search for orders (always show, but secondary if authenticated) */}
       <section className="px-4 pb-6">
         <h2 className="mb-3 text-lg font-semibold" style={{ color: 'var(--tg-theme-text-color)' }}>
           {t(lang, 'my_orders')}
         </h2>
+        
+        {!isAuthenticated && (
+          <p className="text-sm mb-3" style={{ color: 'var(--tg-theme-hint-color)' }}>
+            {lang === 'uz' ? 'Buyurtmalarni telefon raqami orqali qidiring' : 
+             lang === 'ru' ? 'Найдите заказы по номеру телефона' : 
+             'Search orders by phone number'}
+          </p>
+        )}
+        
         <div className="flex gap-2">
           <input
             type="tel"
