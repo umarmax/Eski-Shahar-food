@@ -118,7 +118,36 @@ export async function fetchUserOrders(userId: string, telegramId?: number): Prom
   return []
 }
 
+// Rate limiting for phone lookups
+const phoneLookupCache = new Map<string, { count: number; resetTime: number }>()
+const RATE_LIMIT_MAX = 10 // Max lookups per window
+const RATE_LIMIT_WINDOW = 60000 // 1 minute window
+
+function checkPhoneLookupRateLimit(phone: string): boolean {
+  const now = Date.now()
+  const key = phone.slice(-9) // Use last 9 digits as key
+  const entry = phoneLookupCache.get(key)
+  
+  if (!entry || now > entry.resetTime) {
+    phoneLookupCache.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW })
+    return true
+  }
+  
+  if (entry.count >= RATE_LIMIT_MAX) {
+    return false // Rate limited
+  }
+  
+  entry.count++
+  return true
+}
+
 export async function fetchOrdersByPhone(phone: string): Promise<Order[]> {
+  // Rate limiting check
+  if (!checkPhoneLookupRateLimit(phone)) {
+    console.warn('[RateLimit] Too many phone lookups')
+    return []
+  }
+
   // Normalize phone: remove spaces, dashes, parentheses
   const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '')
   
