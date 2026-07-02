@@ -119,15 +119,43 @@ export async function fetchUserOrders(userId: string, telegramId?: number): Prom
 }
 
 export async function fetchOrdersByPhone(phone: string): Promise<Order[]> {
-  const { data, error } = await supabase
+  // Normalize phone: remove spaces, dashes, parentheses
+  const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '')
+  
+  // Try exact match first
+  let { data, error } = await supabase
     .from('orders')
     .select('*')
     .eq('customer_phone', phone)
     .order('created_at', { ascending: false })
 
-  if (error) {
-    return []
+  if (!error && data && data.length > 0) {
+    return data as Order[]
   }
 
-  return (data ?? []) as Order[]
+  // Try with normalized phone
+  if (normalizedPhone !== phone) {
+    const result = await supabase
+      .from('orders')
+      .select('*')
+      .eq('customer_phone', normalizedPhone)
+      .order('created_at', { ascending: false })
+    
+    if (!result.error && result.data && result.data.length > 0) {
+      return result.data as Order[]
+    }
+  }
+
+  // Try with ilike for partial match (handles HTML escaping)
+  const likeResult = await supabase
+    .from('orders')
+    .select('*')
+    .ilike('customer_phone', `%${normalizedPhone.slice(-9)}%`)
+    .order('created_at', { ascending: false })
+
+  if (!likeResult.error && likeResult.data) {
+    return likeResult.data as Order[]
+  }
+
+  return []
 }

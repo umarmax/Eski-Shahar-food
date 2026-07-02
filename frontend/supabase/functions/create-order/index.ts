@@ -241,9 +241,9 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Sanitize text inputs
+    // Sanitize text inputs (but NOT phone - it breaks lookup)
     const sanitizedName = escapeHtml(body.customer_name.trim())
-    const sanitizedPhone = escapeHtml(body.customer_phone.trim())
+    const sanitizedPhone = body.customer_phone.trim().replace(/[\s\-\(\)]/g, '') // Normalize phone, don't escape
     const sanitizedAddress = body.delivery_address
       ? escapeHtml(body.delivery_address.trim())
       : null
