@@ -105,24 +105,7 @@ export function OrderFormPage() {
         if (error) throw new Error(error.message || 'Failed to create order')
         order = data?.order
         if (!order) throw new Error('Order creation failed')
-
-        // Notify admin
-        try {
-          await supabase.functions.invoke('telegram-bot/notify-order', {
-            body: {
-              id: order.id,
-              total: order.total,
-              customer_name: name.trim(),
-              customer_phone: phone.trim(),
-              delivery_address: address.trim() || null,
-              comment: comment.trim() || null,
-              telegram_username: telegramUsername ?? null,
-              items: orderPayload.items,
-            },
-          })
-        } catch (notifyError) {
-          console.warn('[OrderForm] Admin notification failed:', notifyError)
-        }
+        // Note: Admin notification + customer confirmation is handled by create-order edge function
       } else {
         // Mock order for development
         order = { id: `mock-${Date.now()}`, total: totalPrice }

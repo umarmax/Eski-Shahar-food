@@ -312,6 +312,8 @@ Deno.serve(async (req) => {
           delivery_address: order.delivery_address,
           comment: order.comment,
           telegram_username: order.telegram_username,
+          telegram_user_id: order.telegram_user_id ?? null,
+          lang_code: 'ru',
           items: validatedItems,
         }),
       })

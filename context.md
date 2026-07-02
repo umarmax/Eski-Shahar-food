@@ -1,28 +1,31 @@
 # Session Context: Choyxona Telegram Mini App
 
-> **Last Updated:** July 2, 2026  
+> **Last Updated:** July 2, 2026 (16:25)  
 > **Admin Telegram ID:** 943196988  
 > **GitHub:** https://github.com/umarmax/Eski-Shahar-food (Public)  
-> **Supabase Project:** icjrhufmtqedmihjogco
+> **Supabase Project:** icjrhufmtqedmihjogco  
+> **Vercel:** Auto-deploys from GitHub pushes
 
 ---
 
 ## 🏗️ Current Architecture
 
-### Tech Stack (Migrated from Next.js/Express)
+### Tech Stack
 | Layer | Technology |
 |-------|------------|
 | Frontend | React 19 + Vite 8 + TypeScript |
 | State Management | Zustand |
 | Styling | Tailwind CSS + Framer Motion |
 | Backend | Supabase (PostgreSQL + Edge Functions) |
-| Telegram SDK | @twa-dev/sdk |
+| Telegram SDK | Native `window.Telegram.WebApp` (NOT @twa-dev/sdk) |
 | Deployment | Vercel (frontend) + Supabase (backend) |
 
-### Why We Migrated
-- **From:** Next.js 15 + Express 5 + Prisma + Railway
-- **To:** Vite + Supabase
-- **Reason:** Simpler architecture, faster builds, serverless Edge Functions, built-in auth
+### Recent Changes (July 2, 2026)
+- **Fixed Telegram WebApp SDK** - Switched from `@twa-dev/sdk` to native `window.Telegram.WebApp`
+- **Added Order ID Lookup** - Profile page now supports searching by order number
+- **Customer Order Confirmation** - Bot sends order summary to customer after order
+- **Fixed RLS Policies** - Orders now publicly readable for phone-based lookup
+- **Rate Limiting** - Added to phone lookup (10 req/min)
 
 ---
 
@@ -33,55 +36,33 @@ eski-shahar/
 ├── frontend/                    # Main application
 │   ├── src/
 │   │   ├── components/          # React components
-│   │   │   ├── Layout.tsx       # Bottom navigation
-│   │   │   ├── ProductCard.tsx  # Food item cards
-│   │   │   ├── CategoryList.tsx # Food categories
-│   │   │   ├── HeroSection.tsx  # Café hero banner
-│   │   │   ├── USPBanners.tsx   # Unique selling points
-│   │   │   ├── PageHeader.tsx   # Page headers
-│   │   │   ├── ErrorBoundary.tsx
-│   │   │   └── TelegramMainButtonSync.tsx
 │   │   ├── pages/               # Page components
-│   │   │   ├── HomePage.tsx     # Landing page
-│   │   │   ├── MenuPage.tsx     # Food catalog
-│   │   │   ├── ProductPage.tsx  # Food item detail
-│   │   │   ├── CartPage.tsx     # Shopping cart
-│   │   │   ├── OrderFormPage.tsx # Checkout form
-│   │   │   ├── ProfilePage.tsx  # User profile
-│   │   │   ├── SettingsPage.tsx # Language/theme settings
-│   │   │   └── AboutPage.tsx    # Café info
 │   │   ├── store/               # Zustand stores
-│   │   │   ├── settingsStore.ts # Language, theme, currency
-│   │   │   ├── authStore.ts     # Auth state
-│   │   │   ├── cartStore.ts     # Cart management
-│   │   │   └── appStore.ts      # Products/menu state
-│   │   ├── lib/                 # Utilities
-│   │   │   ├── telegram.ts      # Telegram SDK wrapper
-│   │   │   ├── supabase.ts      # Supabase client
+│   │   ├── lib/
+│   │   │   ├── telegram.ts      # Native Telegram WebApp wrapper
+│   │   │   ├── supabase.ts      # Supabase client + queries
 │   │   │   ├── auth.ts          # Telegram auth helpers
 │   │   │   └── i18n.ts          # Translations (UZ/RU/EN)
-│   │   ├── data/                # Mock/fallback data
-│   │   │   ├── mockProducts.ts  # Fallback menu
-│   │   │   └── categories.ts    # Food categories
 │   │   ├── types/
-│   │   │   └── index.ts         # TypeScript types
-│   │   ├── App.tsx              # Router + AnimatePresence
-│   │   ├── main.tsx             # Entry point
-│   │   └── index.css            # Choyxona theme
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   └── index.css
 │   ├── supabase/
 │   │   ├── migrations/
-│   │   │   └── 001_initial_schema.sql  # Database schema
-│   │   ├── seed.sql             # Sample menu data
-│   │   └── functions/           # Edge Functions
+│   │   │   ├── 001_initial_schema.sql
+│   │   │   ├── 002_phone_profiles.sql
+│   │   │   └── 003_orders_public_read.sql
+│   │   ├── seed.sql
+│   │   └── functions/
 │   │       ├── telegram-auth/   # HMAC validation
 │   │       ├── telegram-bot/    # Bot webhook + notifications
 │   │       └── create-order/    # Secure order creation
 │   ├── package.json
 │   ├── vite.config.ts
-│   ├── vercel.json
-│   └── .env.example
+│   └── vercel.json
 ├── context.md                   # This file
-├── implementation_plan.md       # Detailed progress tracking
+├── implementation_plan.md
+├── SKILLS_PIPELINE.md           # 102 skills for autonomous work
 └── README.md
 ```
 
@@ -91,171 +72,150 @@ eski-shahar/
 
 ### Frontend (.env)
 ```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_SUPABASE_URL=https://icjrhufmtqedmihjogco.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_-3Q-Qn2C33twoV_MZJSWMA_LyqE1Lho
 VITE_TELEGRAM_BOT_USERNAME=eskishahar_bot
 ```
 
 ### Supabase Edge Function Secrets
 ```
-TELEGRAM_BOT_TOKEN=<from @BotFather>
+TELEGRAM_BOT_TOKEN=<from @BotFather> ✅ SET
 TELEGRAM_ADMIN_CHAT_ID=6314294625
-MINI_APP_URL=https://your-app.vercel.app
+MINI_APP_URL=https://eski-shahar-food.vercel.app (NEEDS VERIFICATION)
 ```
 
 ---
 
-## 🗄️ Database Schema (Supabase PostgreSQL)
+## 🗄️ Database Schema
 
 ### Tables
-- **products** - Menu items (name in 3 langs, price, category, image, flags)
-- **orders** - Customer orders (items, total, status, phone, location)
-- **profiles** - User profiles (linked to Telegram ID)
-- **categories** - Food categories
+- **products** - Menu items (name in 3 langs, price, category, image)
+- **orders** - Customer orders (items, total, status, phone, telegram_user_id)
+- **profiles** - User profiles (phone, telegram_id, name)
 
-### Row Level Security (RLS)
-- Products: Public read, admin write
-- Orders: User can read own orders, admin can read all
-- Profiles: User can read/update own profile
-
----
-
-## ⚡ Supabase Edge Functions
-
-### 1. telegram-auth
-- **Purpose:** Validate Telegram initData using HMAC-SHA256
-- **Endpoint:** `POST /functions/v1/telegram-auth`
-- **Returns:** User data if valid, 401 if invalid
-
-### 2. telegram-bot
-- **Purpose:** Handle Telegram bot webhook + send admin notifications
-- **Endpoint:** `POST /functions/v1/telegram-bot`
-- **Features:**
-  - `/start` command with Web App button
-  - Order notifications to admin (chat ID: 6314294625)
-  - Location pin for delivery orders
-
-### 3. create-order
-- **Purpose:** Securely create orders with validation
-- **Endpoint:** `POST /functions/v1/create-order`
-- **Validates:** Auth, items, phone, calculates total
+### RLS Policies (Updated)
+- **Products:** Public read
+- **Orders:** Public read (for phone/order ID lookup), public insert
+- **Profiles:** Public read/write (for guest checkout)
 
 ---
 
-## 🎨 Theme Colors (Choyxona)
+## ⚡ Edge Functions (All Deployed)
 
-| Color | Hex | Usage |
-|-------|-----|-------|
-| Primary Brown | `#8B5E3C` | Buttons, links |
-| Gold Accent | `#C79A5D` | Highlights, accents |
-| Cream Background | `#F8F3EB` | Light mode background |
-| Dark Background | `#1c1c1e` | Dark mode background |
+| Function | Version | Status | Purpose |
+|----------|---------|--------|---------|
+| telegram-auth | v3 | ✅ ACTIVE | Validate Telegram initData |
+| telegram-bot | v4 | ✅ ACTIVE | Bot webhook + customer notifications |
+| create-order | v7 | ✅ ACTIVE | Secure order creation |
 
----
-
-## 🌐 Multilanguage Support
-
-| Language | Code | Status |
-|----------|------|--------|
-| O'zbek | `uz` | ✅ Full |
-| Русский | `ru` | ✅ Full |
-| English | `en` | ✅ Full |
+### telegram-bot Features:
+- `/start` command with multilingual greeting (UZ/RU/EN)
+- Admin notification on new order
+- **NEW:** Customer order confirmation message
+- Order status update via inline buttons
 
 ---
 
-## 🚀 Deployment Guide
+## 🐛 Known Issues
 
-### Step 1: Supabase Setup
-1. Create project at [supabase.com](https://supabase.com)
-2. Go to SQL Editor → Run `001_initial_schema.sql`
-3. Run `seed.sql` to populate menu
-4. Copy URL and anon key
+### Telegram Auth Not Working
+**Symptom:** `WebApp.initDataUnsafe` is `undefined` inside Telegram  
+**Root Cause:** The `@twa-dev/sdk` package conflicts with native Telegram script  
+**Fix Applied:** Switched to native `window.Telegram.WebApp`  
+**Status:** Needs testing in Telegram Mini App
 
-### Step 2: Deploy Edge Functions
+### Workaround for Order Lookup
+Users can find orders by:
+1. **Phone number** - Enter the phone used during checkout
+2. **Order ID** - Enter the 8-character order number (e.g., `5b8d0204`)
+
+---
+
+## 📊 Current Orders in Database
+
+| Order ID | Phone | Name | Total | Status |
+|----------|-------|------|-------|--------|
+| 5b8d0204 | +998999144444 | Sh | 45,000 | pending |
+| aeaa09c4 | +998999144445 | hhh | 45,000 | pending |
+
+---
+
+## 🚀 Deployment Commands
+
 ```bash
-# Install Supabase CLI
-npm install -g supabase
-
-# Login
-supabase login
-
-# Link project
-supabase link --project-ref your-project-ref
-
-# Deploy functions
+# Deploy Edge Functions
+cd frontend
 supabase functions deploy telegram-auth
 supabase functions deploy telegram-bot
 supabase functions deploy create-order
 
-# Set secrets
-supabase secrets set TELEGRAM_BOT_TOKEN=your-token
-supabase secrets set TELEGRAM_ADMIN_CHAT_ID=6314294625
-supabase secrets set MINI_APP_URL=https://your-app.vercel.app
+# Push migrations
+supabase db push
+
+# Push to GitHub (auto-deploys to Vercel)
+git add -A && git commit -m "message" && git push origin main
 ```
-
-### Step 3: Telegram Bot Setup
-1. Create bot via @BotFather (or use existing)
-2. Set webhook: `https://your-project.supabase.co/functions/v1/telegram-bot`
-3. Set Menu Button URL to your Vercel app URL
-
-### Step 4: Deploy to Vercel
-1. Push to GitHub
-2. Import in Vercel → Set root directory to `frontend`
-3. Add environment variables
-4. Deploy
-
----
-
-## 📊 Implementation Status
-
-| Phase | Status |
-|-------|--------|
-| Project Setup | ✅ 100% |
-| Core Infrastructure | ✅ 100% |
-| State Management | ✅ 100% |
-| Components | ✅ 100% |
-| Pages | ✅ 100% |
-| App Entry & Router | ✅ 100% |
-| Types & Data | ✅ 100% |
-| Supabase Backend | ✅ 100% |
-| Configuration | ✅ 100% |
-
-**Overall: 100% Complete** 🎉
-
----
-
-## 🔮 Future Enhancements
-
-### Medium Priority
-- [ ] Loading skeletons for better UX
-- [ ] Pull-to-refresh functionality
-- [ ] Order history page
-- [ ] Favorites functionality
-- [ ] Search functionality
-
-### Low Priority
-- [ ] Push notifications
-- [ ] Loyalty points system
-- [ ] Promo codes
-- [ ] Table reservation feature
 
 ---
 
 ## 📝 Session History
 
-### Session 1 (Legacy - Next.js)
-- Initial Next.js 15 + Express 5 setup
-- Prisma ORM with PostgreSQL
-- Telegraf bot integration
+### Session 4 (July 2, 2026) - Current
+- Fixed Telegram WebApp SDK (native implementation)
+- Added order ID lookup feature
+- Added customer order confirmation via Telegram
+- Fixed RLS policies for public order access
+- Added rate limiting to phone lookup
+- Comprehensive debugging and logging
 
-### Session 2 (Legacy - Features)
-- Admin panel with CRUD
-- About page
-- Checkout improvements
-
-### Session 3 (Current - Migration)
+### Session 3 - Migration
 - Migrated to Vite + Supabase
 - Implemented all pages and components
 - Created Edge Functions
 - Full multilanguage support
-- Ready for deployment
+
+---
+
+## � TODO: Next Steps
+
+### High Priority (Immediate)
+- [ ] Test Telegram auth in real Mini App environment
+- [ ] Verify MINI_APP_URL is set correctly in Supabase secrets
+- [ ] Set up Telegram bot webhook if not done
+- [ ] Test order flow end-to-end
+
+### Medium Priority (This Week)
+- [ ] Add loading skeletons for better UX
+- [ ] Implement order status notifications to customer
+- [ ] Add "Copy Order ID" button after checkout
+- [ ] Remove debug console.log statements
+
+### Low Priority (Future)
+- [ ] Push notifications via Telegram
+- [ ] Loyalty points system
+- [ ] Promo codes
+- [ ] Table reservation feature
+- [ ] Admin dashboard for order management
+
+---
+
+## 🎯 SKILLS_PIPELINE Reference
+
+For this project, use these skill chains:
+
+**Web Development:**
+```
+site-architecture → seo-audit → page-cro → schema-markup → CodeBurn
+```
+
+**Code Review:**
+```
+caveman-review → CodeBurn
+```
+
+**Strategic Decisions:**
+```
+ceo-advisor → founder-coach → scenario-war-room → decision-logger
+```
+
+Always end tasks with **C-Level Advisory Opinion** (CTO, CFO, CPO perspectives).
