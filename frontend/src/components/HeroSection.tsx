@@ -48,15 +48,6 @@ export function HeroSection() {
         </p>
       </motion.div>
 
-      {/* Decorative food emoji */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.3 }}
-        className="absolute -right-4 top-8 text-7xl opacity-20"
-      >
-        🍚
-      </motion.div>
     </section>
   )
 }

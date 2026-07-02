@@ -58,7 +58,7 @@ export function MenuPage() {
 
   return (
     <Layout>
-      <PageHeader title={catTitle} subtitle={t(lang, 'menu_subtitle')} />
+      <PageHeader title={catTitle} subtitle={t(lang, 'menu_subtitle')} showBack />
 
       <section className="px-4 pb-4">
         <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">

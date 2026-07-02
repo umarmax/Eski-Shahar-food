@@ -101,6 +101,29 @@ function ProductsPreview() {
   )
 }
 
+function ThemeSwitcher() {
+  const { theme, setTheme } = useSettingsStore()
+  
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light'
+    setTheme(newTheme)
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      className="flex h-9 w-9 items-center justify-center rounded-xl"
+      style={{
+        background: 'color-mix(in srgb, var(--tg-theme-secondary-bg-color) 80%, transparent)',
+        color: 'var(--tg-theme-text-color)',
+      }}
+    >
+      {theme === 'light' ? '🌙' : '☀️'}
+    </button>
+  )
+}
+
 function LanguagePicker() {
   const { language, setLanguage } = useSettingsStore()
   const [open, setOpen] = useState(false)
@@ -274,7 +297,8 @@ export function HomePage() {
 
   return (
     <Layout>
-      <div className="flex items-center justify-end px-4 pt-3 pb-1">
+      <div className="flex items-center justify-end gap-2 px-4 pt-3 pb-1">
+        <ThemeSwitcher />
         <LanguagePicker />
       </div>
       <HeroSection />

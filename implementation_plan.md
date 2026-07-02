@@ -101,7 +101,24 @@ frontend/supabase/functions/
 
 ---
 
-## 🔴 Remaining Tasks (Future Enhancements)
+## 🟢 Session 4 Updates (July 2, 2026)
+
+### ✅ Supabase Deployment (DONE)
+- [x] Linked Supabase project: `icjrhufmtqedmihjogco`
+- [x] Applied database migration `001_initial_schema.sql`
+- [x] Seeded database with 16 Uzbek menu items
+- [x] Deployed Edge Functions (telegram-auth, telegram-bot, create-order)
+- [x] Set secrets: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID=943196988`
+
+### ✅ UI Improvements (DONE)
+- [x] Removed overlapping decorative emoji from HeroSection
+- [x] Added theme switcher (🌙/☀️) to HomePage header
+- [x] Added back buttons to all inner pages via PageHeader component
+- [x] Cleaned up old Next.js files (next.config.ts, middleware.ts, etc.)
+
+---
+
+##  Remaining Tasks (Future Enhancements)
 
 ### Medium Priority (Nice to Have)
 

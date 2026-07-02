@@ -26,17 +26,7 @@ export function SettingsPage() {
         exit={{ opacity: 0, y: -20 }}
         className="min-h-screen pb-24"
       >
-        <PageHeader title={t(language, 'settings')} subtitle={t(language, 'profile_subtitle')} />
-        
-        {/* Back button */}
-        <button
-          onClick={() => navigate(-1)}
-          className="absolute top-4 left-4 w-10 h-10 rounded-full bg-[var(--tg-theme-secondary-bg-color)] flex items-center justify-center"
-        >
-          <svg className="w-5 h-5 text-[var(--tg-theme-text-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
+        <PageHeader title={t(language, 'settings')} subtitle={t(language, 'profile_subtitle')} showBack />
 
         <div className="px-4 py-6 space-y-6">
           {/* Language Selection */}

@@ -1,8 +1,10 @@
 # Session Context: Choyxona Telegram Mini App
 
 > **Last Updated:** July 2, 2026  
-> **Admin Telegram ID:** 6314294625  
-> **GitHub:** https://github.com/umarmax/eski-shahar
+> **Admin Telegram ID:** 943196988  
+> **GitHub:** https://github.com/umarmax/Eski-Shahar-food  
+> **Supabase Project:** icjrhufmtqedmihjogco  
+> **Bot Token:** 8973214144:AAEgVDPaptqRy-kB92-_QyNv-Im3N_UTcRc
 
 ---
 
