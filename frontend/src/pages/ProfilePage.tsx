@@ -23,13 +23,19 @@ export function ProfilePage() {
   // Get Telegram user ID if available
   const telegramUserId = (() => {
     try {
-      return user?.telegram_id || WebApp.initDataUnsafe?.user?.id || null
-    } catch {
+      const tgId = user?.telegram_id || WebApp.initDataUnsafe?.user?.id || null
+      console.log('[ProfilePage] Telegram user ID:', tgId)
+      console.log('[ProfilePage] user from store:', user)
+      console.log('[ProfilePage] WebApp.initDataUnsafe:', WebApp.initDataUnsafe)
+      return tgId
+    } catch (e) {
+      console.error('[ProfilePage] Error getting Telegram ID:', e)
       return null
     }
   })()
 
   const isAuthenticated = telegramUserId && telegramUserId !== 0
+  console.log('[ProfilePage] isAuthenticated:', isAuthenticated)
 
   // Load saved phone from localStorage
   useEffect(() => {
@@ -66,6 +72,7 @@ export function ProfilePage() {
   const handleSearch = async () => {
     if (!phone.trim()) return
     
+    console.log('[ProfilePage] Searching for phone:', phone.trim())
     setLoading(true)
     setSearched(true)
     
@@ -75,10 +82,12 @@ export function ProfilePage() {
     } catch {}
     
     try {
+      console.log('[ProfilePage] Calling fetchOrdersByPhone...')
       const data = await fetchOrdersByPhone(phone.trim())
+      console.log('[ProfilePage] Orders found:', data.length, data)
       setOrders(data)
     } catch (error) {
-      console.error('Failed to fetch orders:', error)
+      console.error('[ProfilePage] Failed to fetch orders:', error)
       setOrders([])
     } finally {
       setLoading(false)

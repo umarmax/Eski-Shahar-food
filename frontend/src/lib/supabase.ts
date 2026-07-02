@@ -142,6 +142,8 @@ function checkPhoneLookupRateLimit(phone: string): boolean {
 }
 
 export async function fetchOrdersByPhone(phone: string): Promise<Order[]> {
+  console.log('[Supabase] fetchOrdersByPhone called with:', phone)
+  
   // Rate limiting check
   if (!checkPhoneLookupRateLimit(phone)) {
     console.warn('[RateLimit] Too many phone lookups')
@@ -150,8 +152,10 @@ export async function fetchOrdersByPhone(phone: string): Promise<Order[]> {
 
   // Normalize phone: remove spaces, dashes, parentheses
   const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '')
+  console.log('[Supabase] Normalized phone:', normalizedPhone)
   
   // Try exact match first
+  console.log('[Supabase] Trying exact match...')
   let { data, error } = await supabase
     .from('orders')
     .select('*')
