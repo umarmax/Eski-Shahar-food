@@ -9,6 +9,7 @@ import { useAppStore } from '../store/appStore'
 import { useSettingsStore, formatPrice } from '../store/settingsStore'
 import { t, LANGUAGES, getProductName } from '../lib/i18n'
 import { WebApp } from '../lib/telegram'
+import { BUSINESS } from '../config/business'
 import type { Category } from '../types'
 
 function ProductsPreview() {
@@ -181,9 +182,9 @@ function LanguagePicker() {
   )
 }
 
-const CONTACT_PHONE = '+998901234567'
-const CONTACT_PHONE_DISPLAY = '+998 90 123 45 67'
-const CONTACT_BOT = 'eskishahar_bot'
+const CONTACT_PHONE = BUSINESS.phone
+const CONTACT_PHONE_DISPLAY = BUSINESS.phoneDisplay
+const CONTACT_BOT = BUSINESS.botUsername
 
 function ContactButton() {
   const [open, setOpen] = useState(false)

@@ -1,7 +1,7 @@
-# 📋 Choyxona Telegram Mini App - Implementation Plan
+# 📋 Eski Shahar Food Telegram Mini App - Implementation Plan
 
 > **Last Updated:** July 2, 2026  
-> **Project:** Eski Shahar Choyxona (Premium Uzbek Café)  
+> **Project:** Eski Shahar Food (Uzbek cuisine, Chorsu, Tashkent)  
 > **Stack:** React + Vite + TypeScript + Supabase + Telegram Mini App
 
 ---
@@ -26,7 +26,7 @@ A **premium Uzbek café Telegram Mini App** featuring:
 - [x] Configure `vite.config.ts` with manual chunks optimization
 - [x] Configure `tsconfig.json` and `tsconfig.node.json`
 - [x] Create `index.html` entry point
-- [x] Create `src/index.css` with Choyxona theme (warm browns, cream colors)
+- [x] Create `src/index.css` with brand theme (warm browns, cream colors)
 
 ### Phase 2: Core Infrastructure ✅ COMPLETED
 - [x] Create `src/lib/telegram.ts` - Telegram SDK wrapper
@@ -115,6 +115,30 @@ frontend/supabase/functions/
 - [x] Added theme switcher (🌙/☀️) to HomePage header
 - [x] Added back buttons to all inner pages via PageHeader component
 - [x] Cleaned up old Next.js files (next.config.ts, middleware.ts, etc.)
+
+---
+
+## 🟢 Session 5 Updates (September 26, 2026)
+
+### ✅ Security & correctness
+- [x] Migration `004_secure_and_location.sql`: removed public read/write on `orders` & `profiles`, fixed profile upserts (id default, unique phone)
+- [x] `_shared/telegram.ts`: initData validation (constant-time), Telegram API helpers, order messages
+- [x] `create-order`: Telegram identity only from verified initData, raw storage (escape at render), language-aware messages, direct notifications
+- [x] `telegram-bot`: webhook secret required, admin-only callbacks, customer status notifications, `/notify-order` removed
+- [x] New `my-orders` function (signed initData, or order ID + phone)
+- [x] Fixed MainButton handler leak, wired Telegram BackButton, removed debug logs and unused `@twa-dev/sdk`
+
+### ✅ Delivery location at checkout
+- [x] `LocationPicker` — Telegram LocationManager (Bot API 8.0) with browser geolocation fallback
+- [x] "Send in chat" fallback — bot sends native `request_location` keyboard; webhook attaches the pin to the order
+- [x] Admin gets Google/Yandex links + native map pin; rule: location OR address required
+- [x] Order success screen with order number + copy
+
+### ✅ Old-paper UI
+- [x] `AppBackground` — paper grain, stains, vignette, drifting girih pattern, scroll parallax, tap ink bloom, reduced-motion support
+- [x] Parchment palette (light/dark), Cormorant Garamond headings, paper cards/inputs, hero medallion
+
+> Earlier "100% complete" status was premature: several security holes and broken profile upserts were found and fixed in Session 5. Nothing is deployed until the steps in `context.md` → High Priority are done.
 
 ---
 
@@ -241,7 +265,7 @@ frontend/
 
 ---
 
-## 🎨 Theme Colors (Choyxona)
+## 🎨 Theme Colors
 
 | Color | Hex | Usage |
 |-------|-----|-------|

@@ -9,6 +9,22 @@ declare global {
   }
 }
 
+interface TelegramLocationData {
+  latitude: number
+  longitude: number
+  horizontal_accuracy?: number | null
+}
+
+interface TelegramLocationManager {
+  isInited: boolean
+  isLocationAvailable: boolean
+  isAccessRequested: boolean
+  isAccessGranted: boolean
+  init: (callback?: () => void) => void
+  getLocation: (callback: (data: TelegramLocationData | null) => void) => void
+  openSettings: () => void
+}
+
 interface TelegramWebApp {
   initData: string
   initDataUnsafe: {
@@ -27,6 +43,7 @@ interface TelegramWebApp {
     chat_type?: string
     start_param?: string
   }
+  version: string
   colorScheme: 'light' | 'dark'
   themeParams: {
     bg_color?: string
@@ -39,9 +56,12 @@ interface TelegramWebApp {
     accent_text_color?: string
     destructive_text_color?: string
   }
+  isVersionAtLeast: (version: string) => boolean
   ready: () => void
   expand: () => void
   close: () => void
+  setHeaderColor: (color: string) => void
+  setBackgroundColor: (color: string) => void
   onEvent: (eventType: string, callback: () => void) => void
   offEvent: (eventType: string, callback: () => void) => void
   MainButton: {
@@ -66,6 +86,7 @@ interface TelegramWebApp {
     notificationOccurred: (type: 'error' | 'success' | 'warning') => void
     selectionChanged: () => void
   }
+  LocationManager?: TelegramLocationManager
   openLink: (url: string, options?: { try_instant_view?: boolean }) => void
   openTelegramLink: (url: string) => void
   showAlert: (message: string, callback?: () => void) => void
@@ -79,31 +100,28 @@ interface TelegramWebApp {
   }
 }
 
+const noop = () => {}
+
 // Create a safe wrapper that handles missing Telegram context
 const createSafeWebApp = (): TelegramWebApp => {
   const nativeWebApp = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined
-  
-  console.log('[Telegram] Native WebApp:', nativeWebApp)
-  console.log('[Telegram] initDataUnsafe:', nativeWebApp?.initDataUnsafe)
-  console.log('[Telegram] initData:', nativeWebApp?.initData ? 'present' : 'empty')
-  
-  // If native WebApp exists and has data, use it
-  if (nativeWebApp) {
-    return nativeWebApp
-  }
-  
+  if (nativeWebApp) return nativeWebApp
+
   // Fallback for development/browser testing
-  console.warn('[Telegram] WebApp not available, using mock')
   return {
     initData: '',
     initDataUnsafe: {},
+    version: '6.0',
     colorScheme: 'light',
     themeParams: {},
-    ready: () => console.log('[Telegram Mock] ready()'),
-    expand: () => console.log('[Telegram Mock] expand()'),
-    close: () => console.log('[Telegram Mock] close()'),
-    onEvent: () => {},
-    offEvent: () => {},
+    isVersionAtLeast: () => false,
+    ready: noop,
+    expand: noop,
+    close: noop,
+    setHeaderColor: noop,
+    setBackgroundColor: noop,
+    onEvent: noop,
+    offEvent: noop,
     MainButton: {
       text: '',
       color: '#000000',
@@ -111,20 +129,20 @@ const createSafeWebApp = (): TelegramWebApp => {
       isVisible: false,
       isActive: true,
       isProgressVisible: false,
-      setText: () => {},
-      onClick: () => {},
-      offClick: () => {},
-      show: () => {},
-      hide: () => {},
-      enable: () => {},
-      disable: () => {},
-      showProgress: () => {},
-      hideProgress: () => {},
+      setText: noop,
+      onClick: noop,
+      offClick: noop,
+      show: noop,
+      hide: noop,
+      enable: noop,
+      disable: noop,
+      showProgress: noop,
+      hideProgress: noop,
     },
     HapticFeedback: {
-      impactOccurred: () => {},
-      notificationOccurred: () => {},
-      selectionChanged: () => {},
+      impactOccurred: noop,
+      notificationOccurred: noop,
+      selectionChanged: noop,
     },
     openLink: (url: string) => { window.open(url, '_blank') },
     openTelegramLink: (url: string) => { window.open(url, '_blank') },
@@ -133,20 +151,120 @@ const createSafeWebApp = (): TelegramWebApp => {
       callback?.()
     },
     showConfirm: (message: string, callback?: (confirmed: boolean) => void) => {
-      const result = confirm(message)
-      callback?.(result)
+      callback?.(confirm(message))
     },
     BackButton: {
       isVisible: false,
-      onClick: () => {},
-      offClick: () => {},
-      show: () => {},
-      hide: () => {},
+      onClick: noop,
+      offClick: noop,
+      show: noop,
+      hide: noop,
     },
   }
 }
 
 export const WebApp = createSafeWebApp()
+
+/** True when running inside a real Telegram client with a signed user. */
+export const isInTelegram = Boolean(WebApp.initData && WebApp.initDataUnsafe?.user?.id)
+
+// ── Location ──
+
+export interface DeliveryLocation {
+  lat: number
+  lng: number
+  accuracy: number | null
+}
+
+export type LocationResult =
+  | { ok: true; location: DeliveryLocation }
+  | { ok: false; reason: 'denied' | 'unavailable' }
+
+function hasTelegramLocationManager(): boolean {
+  try {
+    return Boolean(WebApp.LocationManager) && WebApp.isVersionAtLeast('8.0')
+  } catch {
+    return false
+  }
+}
+
+function browserGeolocation(): Promise<LocationResult> {
+  return new Promise((resolve) => {
+    if (!('geolocation' in navigator)) {
+      resolve({ ok: false, reason: 'unavailable' })
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        resolve({
+          ok: true,
+          location: {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null,
+          },
+        }),
+      (err) =>
+        resolve({ ok: false, reason: err.code === err.PERMISSION_DENIED ? 'denied' : 'unavailable' }),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
+    )
+  })
+}
+
+/**
+ * Ask for the user's current location.
+ * Uses Telegram's native LocationManager (Bot API 8.0+), falls back to the
+ * browser Geolocation API on older clients / outside Telegram.
+ */
+export function requestLocation(): Promise<LocationResult> {
+  if (!hasTelegramLocationManager()) return browserGeolocation()
+
+  const lm = WebApp.LocationManager!
+  return new Promise((resolve) => {
+    const fetchLocation = () => {
+      if (!lm.isLocationAvailable) {
+        void browserGeolocation().then(resolve)
+        return
+      }
+      lm.getLocation((data) => {
+        if (data && Number.isFinite(data.latitude) && Number.isFinite(data.longitude)) {
+          resolve({
+            ok: true,
+            location: {
+              lat: data.latitude,
+              lng: data.longitude,
+              accuracy: data.horizontal_accuracy ?? null,
+            },
+          })
+        } else {
+          resolve({ ok: false, reason: lm.isAccessRequested && !lm.isAccessGranted ? 'denied' : 'unavailable' })
+        }
+      })
+    }
+
+    try {
+      if (lm.isInited) fetchLocation()
+      else lm.init(fetchLocation)
+    } catch {
+      void browserGeolocation().then(resolve)
+    }
+  })
+}
+
+/** Opens Telegram's location permission settings, if supported. */
+export function canOpenLocationSettings(): boolean {
+  return hasTelegramLocationManager() && Boolean(WebApp.LocationManager?.isAccessRequested)
+}
+
+export function openLocationSettings() {
+  try {
+    WebApp.LocationManager?.openSettings()
+  } catch {
+    // not supported
+  }
+}
+
+// ── Theme ──
 
 const THEME_VARS: Record<string, keyof TelegramWebApp['themeParams']> = {
   '--tg-theme-bg-color': 'bg_color',
@@ -160,43 +278,38 @@ const THEME_VARS: Record<string, keyof TelegramWebApp['themeParams']> = {
   '--tg-theme-destructive-text-color': 'destructive_text_color',
 }
 
-function applyTelegramTheme() {
+export const THEME_CSS_VARS = Object.keys(THEME_VARS)
+
+/** Sync Telegram's header/background with the app's paper colors. */
+export function syncTelegramChrome() {
+  try {
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--tg-theme-bg-color').trim()
+    if (bg && WebApp.isVersionAtLeast('6.1')) {
+      WebApp.setHeaderColor(bg)
+      WebApp.setBackgroundColor(bg)
+    }
+  } catch {
+    // older clients
+  }
+}
+
+/**
+ * Applies the app's color scheme. Paper palette is defined in index.css per
+ * scheme; Telegram only decides light vs dark in "auto" mode.
+ */
+export function applyTelegramTheme() {
   try {
     const root = document.documentElement
-
-    for (const [cssVar, paramKey] of Object.entries(THEME_VARS)) {
-      const value = WebApp.themeParams[paramKey]
-      if (value) {
-        root.style.setProperty(cssVar, value)
-      }
-    }
-
+    for (const cssVar of THEME_CSS_VARS) root.style.removeProperty(cssVar)
     root.dataset.colorScheme = WebApp.colorScheme ?? 'light'
-  } catch (e) {
-    console.warn('[Telegram] applyTelegramTheme error:', e)
+    syncTelegramChrome()
+  } catch {
+    // ignore
   }
 }
 
 export function initTelegramApp() {
-  try {
-    WebApp.ready()
-  } catch (e) {
-    console.warn('[Telegram] WebApp.ready() error:', e)
-  }
-
-  try {
-    WebApp.expand()
-  } catch (e) {
-    console.warn('[Telegram] WebApp.expand() error:', e)
-  }
-
-  applyTelegramTheme()
-
-  try {
-    WebApp.onEvent('themeChanged', applyTelegramTheme)
-  } catch (e) {
-    console.warn('[Telegram] onEvent error:', e)
-  }
-
+  try { WebApp.ready() } catch { /* ignore */ }
+  try { WebApp.expand() } catch { /* ignore */ }
   return WebApp
 }

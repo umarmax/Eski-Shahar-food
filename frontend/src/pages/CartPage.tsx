@@ -184,10 +184,6 @@ export function CartPage() {
               className="glass-card rounded-2xl p-4"
               style={{ borderColor: 'color-mix(in srgb, var(--tg-theme-accent-text-color) 20%, transparent)' }}
             >
-              <div className="mb-2 flex justify-between text-sm">
-                <span style={{ color: 'var(--tg-theme-hint-color)' }}>{t(lang, 'free_delivery')}</span>
-                <span style={{ color: 'var(--tg-theme-accent-text-color)' }}>0</span>
-              </div>
               <div className="flex justify-between text-base font-semibold">
                 <span style={{ color: 'var(--tg-theme-text-color)' }}>{t(lang, 'total')}</span>
                 <span style={{ color: 'var(--tg-theme-text-color)' }}>{formatPrice(totalPrice)}</span>

@@ -3,14 +3,131 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Layout } from '../components/Layout'
 import { PageHeader } from '../components/PageHeader'
+import { LocationPicker } from '../components/LocationPicker'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
-import { WebApp } from '../lib/telegram'
+import { WebApp, isInTelegram, type DeliveryLocation } from '../lib/telegram'
 import { useAuthStore } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
 import { useSettingsStore, formatPrice } from '../store/settingsStore'
 import { t, getProductName } from '../lib/i18n'
+import type { OrderPayload } from '../types'
 
 const PHONE_REGEX = /^[\+]?[0-9\s\-\(\)]{9,20}$/
+
+interface PlacedOrder {
+  id: string
+  total: number
+  locationRequested: boolean
+}
+
+function readLocal(key: string) {
+  try { return localStorage.getItem(key) ?? '' } catch { return '' }
+}
+
+function OrderSuccess({ order }: { order: PlacedOrder }) {
+  const navigate = useNavigate()
+  const lang = useSettingsStore((s) => s.language)
+  const [copied, setCopied] = useState(false)
+  const shortId = order.id.slice(0, 8)
+
+  const copyId = async () => {
+    try {
+      await navigator.clipboard.writeText(shortId)
+      setCopied(true)
+      try { WebApp.HapticFeedback.notificationOccurred('success') } catch { /* ignore */ }
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // clipboard not available
+    }
+  }
+
+  return (
+    <Layout hideNav>
+      <motion.section
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ type: 'spring', damping: 20, stiffness: 200 }}
+        className="px-4 pb-6 pt-12"
+      >
+        <div className="paper-card rounded-3xl p-6 text-center">
+          <motion.div
+            initial={{ scale: 0, rotate: -30 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ delay: 0.15, type: 'spring', damping: 12 }}
+            className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full text-4xl"
+            style={{ background: 'color-mix(in srgb, var(--color-emerald) 18%, transparent)' }}
+          >
+            ✅
+          </motion.div>
+          <h1 className="mb-1 font-serif text-3xl font-bold" style={{ color: 'var(--tg-theme-text-color)' }}>
+            {t(lang, 'order_success_title')}
+          </h1>
+          <p className="mb-5 text-sm" style={{ color: 'var(--tg-theme-hint-color)' }}>
+            {t(lang, 'order_success_text')}
+          </p>
+
+          <div className="ornament-divider mb-4" />
+
+          <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--tg-theme-hint-color)' }}>
+            {t(lang, 'order_number')}
+          </p>
+          <div className="mb-1 mt-1 flex items-center justify-center gap-3">
+            <span className="font-mono text-2xl font-bold" style={{ color: 'var(--tg-theme-accent-text-color)' }}>
+              №{shortId}
+            </span>
+            <button
+              type="button"
+              onClick={copyId}
+              className="rounded-lg px-2 py-1 text-xs font-medium"
+              style={{ background: 'var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-link-color)' }}
+            >
+              {copied ? t(lang, 'order_copied') : t(lang, 'order_copy_id')}
+            </button>
+          </div>
+          <p className="mb-5 text-sm font-semibold" style={{ color: 'var(--tg-theme-text-color)' }}>
+            {formatPrice(order.total)}
+          </p>
+
+          {order.locationRequested && (
+            <div
+              className="mb-4 rounded-2xl p-3 text-sm"
+              style={{ background: 'color-mix(in srgb, var(--tg-theme-accent-text-color) 15%, transparent)', color: 'var(--tg-theme-text-color)' }}
+            >
+              {t(lang, 'order_chat_location_hint')}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {order.locationRequested && isInTelegram && (
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.98 }}
+                onClick={() => { try { WebApp.close() } catch { /* ignore */ } }}
+                className="flex min-h-[52px] w-full items-center justify-center rounded-2xl text-base font-semibold"
+                style={{ background: 'var(--tg-theme-button-color)', color: 'var(--tg-theme-button-text-color)' }}
+              >
+                {t(lang, 'order_open_chat')}
+              </motion.button>
+            )}
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate('/profile')}
+              className="flex min-h-[48px] w-full items-center justify-center rounded-2xl text-sm font-semibold"
+              style={
+                order.locationRequested && isInTelegram
+                  ? { background: 'var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-text-color)' }
+                  : { background: 'var(--tg-theme-button-color)', color: 'var(--tg-theme-button-text-color)' }
+              }
+            >
+              {t(lang, 'my_orders_btn')}
+            </motion.button>
+          </div>
+        </div>
+      </motion.section>
+    </Layout>
+  )
+}
 
 export function OrderFormPage() {
   const navigate = useNavigate()
@@ -24,19 +141,7 @@ export function OrderFormPage() {
     try { return WebApp.initDataUnsafe?.user } catch { return null }
   })()
 
-  const telegramUserId = user?.telegram_id && user.telegram_id !== 0
-    ? user.telegram_id
-    : tgUser?.id ?? undefined
-
-  const telegramUsername = user?.username ?? tgUser?.username ?? undefined
-
-  const savedName = (() => {
-    try { return localStorage.getItem('choyxona-last-name') ?? '' } catch { return '' }
-  })()
-  const savedPhone = (() => {
-    try { return localStorage.getItem('choyxona-last-phone') ?? '' } catch { return '' }
-  })()
-
+  const savedName = readLocal('choyxona-last-name')
   const defaultName = user && user.id !== 'dev-user'
     ? [user.first_name, user.last_name].filter(Boolean).join(' ')
     : tgUser
@@ -44,17 +149,24 @@ export function OrderFormPage() {
       : savedName
 
   const [name, setName] = useState(defaultName || savedName)
-  const [phone, setPhone] = useState(savedPhone)
+  const [phone, setPhone] = useState(readLocal('choyxona-last-phone'))
+  const [location, setLocation] = useState<DeliveryLocation | null>(null)
+  const [locationViaChat, setLocationViaChat] = useState(false)
   const [address, setAddress] = useState('')
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [placedOrder, setPlacedOrder] = useState<PlacedOrder | null>(null)
+
+  const clearError = (key: string) => {
+    if (errors[key]) setErrors({ ...errors, [key]: '' })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (items.length === 0) {
-      try { WebApp.showAlert(t(lang, 'cart_is_empty')) } catch {}
+      try { WebApp.showAlert(t(lang, 'cart_is_empty')) } catch { /* ignore */ }
       navigate('/cart')
       return
     }
@@ -65,73 +177,87 @@ export function OrderFormPage() {
     if (!phone.trim()) newErrors.phone = t(lang, 'val_phone_required')
     else if (!PHONE_REGEX.test(phone)) newErrors.phone = t(lang, 'val_phone_invalid')
     else if (phone.length > 20) newErrors.phone = t(lang, 'val_phone_long')
+    if (!location && !address.trim() && !(locationViaChat && isInTelegram)) {
+      newErrors.location = t(lang, 'val_location_or_address')
+    }
     if (address && address.length > 500) newErrors.address = t(lang, 'val_address_long')
     if (comment && comment.length > 1000) newErrors.comment = t(lang, 'val_comment_long')
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
-      try { WebApp.showAlert(t(lang, 'val_fix_errors')) } catch {}
+      try { WebApp.HapticFeedback.notificationOccurred('error') } catch { /* ignore */ }
+      try { WebApp.showAlert(t(lang, 'val_fix_errors')) } catch { /* ignore */ }
       return
     }
 
     setErrors({})
     setSubmitting(true)
-    try { WebApp.MainButton.showProgress() } catch {}
 
     try {
-      const orderPayload = {
+      const orderPayload: OrderPayload = {
         items: items.map((item) => ({
           product_id: item.productId,
-          name: getProductName(item.product, lang),
           quantity: item.quantity,
-          price: item.product.price,
-          notes: item.notes,
         })),
-        telegram_user_id: telegramUserId,
-        telegram_username: telegramUsername,
+        init_data: WebApp.initData || undefined,
+        lang,
         customer_name: name.trim(),
         customer_phone: phone.trim(),
         delivery_address: address.trim() || undefined,
+        delivery_location: location ?? undefined,
+        location_via_chat: !location && locationViaChat && isInTelegram,
         comment: comment.trim() || undefined,
       }
 
-      let order: { id: string; total: number } | null = null
+      let order: PlacedOrder
 
       if (isSupabaseConfigured) {
         const { data, error } = await supabase.functions.invoke('create-order', {
           body: orderPayload,
         })
-
-        if (error) throw new Error(error.message || 'Failed to create order')
-        order = data?.order
-        if (!order) throw new Error('Order creation failed')
-        // Note: Admin notification + customer confirmation is handled by create-order edge function
+        if (error) {
+          // Surface the function's own error message (e.g. rate limit) instead of the generic one
+          let message = error.message || 'Failed to create order'
+          try {
+            const body = await (error as { context?: Response }).context?.json()
+            if (body?.error) message = body.error
+          } catch { /* not JSON */ }
+          throw new Error(message)
+        }
+        if (!data?.order) throw new Error('Order creation failed')
+        order = {
+          id: data.order.id,
+          total: data.order.total,
+          locationRequested: Boolean(data.order.location_requested),
+        }
       } else {
         // Mock order for development
-        order = { id: `mock-${Date.now()}`, total: totalPrice }
+        order = {
+          id: crypto.randomUUID(),
+          total: totalPrice,
+          locationRequested: Boolean(orderPayload.location_via_chat),
+        }
+        console.info('[Order] mock payload', orderPayload, items.map((i) => getProductName(i.product, lang)))
       }
 
-      // Save name/phone for next order
       try {
         localStorage.setItem('choyxona-last-name', name.trim())
         localStorage.setItem('choyxona-last-phone', phone.trim())
-      } catch {}
+      } catch { /* ignore */ }
 
       clearCart()
-      try { WebApp.HapticFeedback.notificationOccurred('success') } catch {}
-      navigate('/profile')
+      setPlacedOrder(order)
+      try { WebApp.HapticFeedback.notificationOccurred('success') } catch { /* ignore */ }
     } catch (error) {
-      try { WebApp.HapticFeedback.notificationOccurred('error') } catch {}
-      try {
-        WebApp.showAlert(error instanceof Error ? error.message : t(lang, 'error_title'))
-      } catch {
-        alert(error instanceof Error ? error.message : t(lang, 'error_title'))
-      }
+      try { WebApp.HapticFeedback.notificationOccurred('error') } catch { /* ignore */ }
+      const message = error instanceof Error ? error.message : t(lang, 'error_title')
+      try { WebApp.showAlert(message) } catch { alert(message) }
     } finally {
       setSubmitting(false)
-      try { WebApp.MainButton.hideProgress() } catch {}
     }
   }
+
+  if (placedOrder) return <OrderSuccess order={placedOrder} />
 
   if (items.length === 0) {
     return (
@@ -141,8 +267,7 @@ export function OrderFormPage() {
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl p-8 text-center"
-            style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
+            className="paper-card rounded-2xl p-8 text-center"
           >
             <p className="mb-4 text-4xl">🛒</p>
             <p className="mb-4 text-sm" style={{ color: 'var(--tg-theme-hint-color)' }}>
@@ -162,16 +287,17 @@ export function OrderFormPage() {
     )
   }
 
-  const inputStyle = {
-    background: 'var(--tg-theme-secondary-bg-color)',
-    color: 'var(--tg-theme-text-color)',
-  }
+  const inputClass = (key: string, extra = '') =>
+    `paper-input w-full rounded-xl px-4 py-3 text-base outline-none ${extra} ${errors[key] ? 'ring-2 ring-red-500' : ''}`
+
+  const labelStyle = { color: 'var(--tg-theme-text-color)' }
 
   return (
     <Layout hideNav>
       <PageHeader
         title={t(lang, 'order_title')}
         subtitle={`${items.length} ${t(lang, 'items_count')} · ${formatPrice(totalPrice)}`}
+        showBack
       />
 
       <motion.section
@@ -179,78 +305,92 @@ export function OrderFormPage() {
         animate={{ opacity: 1, y: 0 }}
         className="space-y-4 px-4 pb-6"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div>
-            <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--tg-theme-text-color)' }}>
+            <label className="mb-2 block text-sm font-medium" style={labelStyle}>
               {t(lang, 'order_name_label')} <span style={{ color: 'red' }}>*</span>
             </label>
             <input
               type="text"
               value={name}
-              onChange={(e) => { setName(e.target.value); if (errors.name) setErrors({ ...errors, name: '' }) }}
+              onChange={(e) => { setName(e.target.value); clearError('name') }}
               placeholder={t(lang, 'order_name_placeholder')}
-              required
               maxLength={100}
-              className={`w-full rounded-xl border-0 px-4 py-3 text-base outline-none ${errors.name ? 'ring-2 ring-red-500' : ''}`}
-              style={inputStyle}
+              autoComplete="name"
+              className={inputClass('name')}
             />
             {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--tg-theme-text-color)' }}>
+            <label className="mb-2 block text-sm font-medium" style={labelStyle}>
               {t(lang, 'order_phone_label')} <span style={{ color: 'red' }}>*</span>
             </label>
             <input
               type="tel"
               value={phone}
-              onChange={(e) => { setPhone(e.target.value); if (errors.phone) setErrors({ ...errors, phone: '' }) }}
+              onChange={(e) => { setPhone(e.target.value); clearError('phone') }}
               placeholder={t(lang, 'order_phone_placeholder')}
-              required
               maxLength={20}
-              className={`w-full rounded-xl border-0 px-4 py-3 text-base outline-none ${errors.phone ? 'ring-2 ring-red-500' : ''}`}
-              style={inputStyle}
+              autoComplete="tel"
+              className={inputClass('phone')}
             />
             {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--tg-theme-text-color)' }}>
+            <LocationPicker
+              value={location}
+              onChange={(loc) => { setLocation(loc); clearError('location') }}
+              viaChat={locationViaChat}
+              onViaChatChange={(v) => { setLocationViaChat(v); clearError('location') }}
+              canUseChat={isInTelegram}
+              hasError={Boolean(errors.location)}
+            />
+            {errors.location && <p className="mt-1 text-xs text-red-500">{errors.location}</p>}
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium" style={labelStyle}>
               {t(lang, 'order_address_label')}
+              {!location && (
+                <span className="ml-1 text-xs font-normal" style={{ color: 'var(--tg-theme-hint-color)' }}>
+                  ({t(lang, 'loc_or_address')})
+                </span>
+              )}
             </label>
             <input
               type="text"
               value={address}
-              onChange={(e) => { setAddress(e.target.value); if (errors.address) setErrors({ ...errors, address: '' }) }}
+              onChange={(e) => { setAddress(e.target.value); clearError('address'); clearError('location') }}
               placeholder={t(lang, 'order_address_placeholder')}
               maxLength={500}
-              className={`w-full rounded-xl border-0 px-4 py-3 text-base outline-none ${errors.address ? 'ring-2 ring-red-500' : ''}`}
-              style={inputStyle}
+              autoComplete="street-address"
+              className={inputClass('address')}
             />
             {errors.address && <p className="mt-1 text-xs text-red-500">{errors.address}</p>}
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--tg-theme-text-color)' }}>
+            <label className="mb-2 block text-sm font-medium" style={labelStyle}>
               {t(lang, 'order_comment_label')}
             </label>
             <textarea
               value={comment}
-              onChange={(e) => { setComment(e.target.value); if (errors.comment) setErrors({ ...errors, comment: '' }) }}
+              onChange={(e) => { setComment(e.target.value); clearError('comment') }}
               placeholder={t(lang, 'order_comment_placeholder')}
               rows={3}
               maxLength={1000}
-              className={`w-full resize-none rounded-xl border-0 px-4 py-3 text-base outline-none ${errors.comment ? 'ring-2 ring-red-500' : ''}`}
-              style={inputStyle}
+              className={inputClass('comment', 'resize-none')}
             />
             {errors.comment && <p className="mt-1 text-xs text-red-500">{errors.comment}</p>}
           </div>
 
-          <div className="rounded-2xl p-4" style={{ background: 'var(--tg-theme-secondary-bg-color)' }}>
+          <div className="paper-card rounded-2xl p-4">
             <p className="mb-1 text-sm" style={{ color: 'var(--tg-theme-hint-color)' }}>
               {t(lang, 'order_total')}
             </p>
-            <p className="text-2xl font-bold" style={{ color: 'var(--tg-theme-text-color)' }}>
+            <p className="font-serif text-3xl font-bold" style={{ color: 'var(--tg-theme-text-color)' }}>
               {formatPrice(totalPrice)}
             </p>
           </div>
@@ -259,7 +399,7 @@ export function OrderFormPage() {
             type="submit"
             disabled={submitting}
             whileTap={submitting ? {} : { scale: 0.98 }}
-            className="flex min-h-[52px] w-full items-center justify-center rounded-2xl text-base font-semibold disabled:opacity-50"
+            className="flex min-h-[52px] w-full items-center justify-center rounded-2xl text-base font-semibold shadow-md disabled:opacity-50"
             style={{ background: 'var(--tg-theme-button-color)', color: 'var(--tg-theme-button-text-color)' }}
           >
             {submitting ? t(lang, 'order_submitting') : t(lang, 'order_submit')}

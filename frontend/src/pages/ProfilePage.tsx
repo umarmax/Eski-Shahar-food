@@ -3,95 +3,47 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Layout } from '../components/Layout'
 import { PageHeader } from '../components/PageHeader'
-import { fetchOrdersByPhone, supabase } from '../lib/supabase'
+import { fetchMyOrders, fetchOrderByIdAndPhone } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
 import { useSettingsStore, formatPrice } from '../store/settingsStore'
 import { t } from '../lib/i18n'
-import { WebApp } from '../lib/telegram'
+import { WebApp, isInTelegram } from '../lib/telegram'
+import { isAdminUser } from '../lib/admin'
 import type { Order } from '../types'
 
 export function ProfilePage() {
   const user = useAuthStore((s) => s.user)
   const lang = useSettingsStore((s) => s.language)
-  
-  const [phone, setPhone] = useState('')
+
+  const [phone, setPhone] = useState(() => {
+    try { return localStorage.getItem('choyxona-last-phone') ?? '' } catch { return '' }
+  })
+  const [orderId, setOrderId] = useState('')
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
 
-  // Get Telegram user ID if available
-  const telegramUserId = (() => {
-    try {
-      const tgId = user?.telegram_id || WebApp.initDataUnsafe?.user?.id || null
-      console.log('[ProfilePage] Telegram user ID:', tgId)
-      console.log('[ProfilePage] user from store:', user)
-      console.log('[ProfilePage] WebApp.initDataUnsafe:', WebApp.initDataUnsafe)
-      return tgId
-    } catch (e) {
-      console.error('[ProfilePage] Error getting Telegram ID:', e)
-      return null
-    }
-  })()
-
-  const isAuthenticated = telegramUserId && telegramUserId !== 0
-  console.log('[ProfilePage] isAuthenticated:', isAuthenticated)
-
-  // Load saved phone from localStorage
+  // Signed Telegram session → load own orders automatically
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('choyxona-last-phone')
-      if (saved) setPhone(saved)
-    } catch {}
+    if (!isInTelegram) return
+    let cancelled = false
+    setLoading(true)
+    setSearched(true)
+    fetchMyOrders(WebApp.initData)
+      .then((data) => { if (!cancelled) setOrders(data) })
+      .catch(() => { if (!cancelled) setOrders([]) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [])
 
-  // Auto-load orders if authenticated via Telegram
-  useEffect(() => {
-    if (isAuthenticated && telegramUserId) {
-      loadOrdersByTelegram()
-    }
-  }, [isAuthenticated, telegramUserId])
-
-  const loadOrdersByTelegram = async () => {
-    if (!telegramUserId) return
-    
+  const handleLookup = async () => {
+    if (!phone.trim() || !orderId.trim()) return
     setLoading(true)
     setSearched(true)
+    try { localStorage.setItem('choyxona-last-phone', phone.trim()) } catch { /* ignore */ }
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('telegram_user_id', telegramUserId)
-        .order('created_at', { ascending: false })
-      
-      if (!error && data) {
-        setOrders(data as Order[])
-      }
-    } catch (error) {
-      console.error('Failed to fetch orders:', error)
-      setOrders([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSearchByPhone = async () => {
-    if (!phone.trim()) return
-    
-    console.log('[ProfilePage] Searching for phone:', phone.trim())
-    setLoading(true)
-    setSearched(true)
-    
-    // Save phone for future use
-    try {
-      localStorage.setItem('choyxona-last-phone', phone.trim())
-    } catch {}
-    
-    try {
-      const data = await fetchOrdersByPhone(phone.trim())
-      console.log('[ProfilePage] Orders found:', data.length, data)
-      setOrders(data)
-    } catch (error) {
-      console.error('[ProfilePage] Failed to fetch orders:', error)
+      setOrders(await fetchOrderByIdAndPhone(orderId.trim(), phone.trim()))
+    } catch {
       setOrders([])
     } finally {
       setLoading(false)
@@ -131,7 +83,7 @@ export function ProfilePage() {
       <PageHeader title={t(lang, 'profile_title')} subtitle={t(lang, 'profile_subtitle')} />
 
       {/* Telegram User Info (if authenticated) */}
-      {isAuthenticated && user && (
+      {isInTelegram && user && (
         <section className="px-4 pb-6">
           <div className="glass-card rounded-2xl p-4">
             <div className="flex items-center gap-4">
@@ -163,32 +115,46 @@ export function ProfilePage() {
         </section>
       )}
 
-      {/* Phone search */}
+      {/* Order lookup (outside Telegram: order ID + phone) */}
       <section className="px-4 pb-4">
-        <h2 className="mb-3 text-lg font-semibold" style={{ color: 'var(--tg-theme-text-color)' }}>
+        <h2 className="mb-3 font-serif text-xl font-semibold" style={{ color: 'var(--tg-theme-text-color)' }}>
           {t(lang, 'my_orders')}
         </h2>
-        
-        <div className="flex gap-2">
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearchByPhone()}
-            placeholder={t(lang, 'order_phone_placeholder')}
-            className="flex-1 rounded-xl border-0 px-4 py-3 text-base outline-none"
-            style={{ background: 'var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-text-color)' }}
-          />
-          <button
-            type="button"
-            onClick={handleSearchByPhone}
-            disabled={loading || !phone.trim()}
-            className="rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-50"
-            style={{ background: 'var(--tg-theme-button-color)', color: 'var(--tg-theme-button-text-color)' }}
-          >
-            🔍
-          </button>
-        </div>
+
+        {!isInTelegram && (
+          <div className="paper-card space-y-2 rounded-2xl p-3">
+            <p className="text-xs" style={{ color: 'var(--tg-theme-hint-color)' }}>
+              {t(lang, 'lookup_hint')}
+            </p>
+            <input
+              type="text"
+              value={orderId}
+              onChange={(e) => setOrderId(e.target.value)}
+              placeholder={t(lang, 'lookup_order_id_placeholder')}
+              maxLength={40}
+              className="paper-input w-full rounded-xl px-4 py-3 text-base outline-none"
+            />
+            <div className="flex gap-2">
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleLookup()}
+                placeholder={t(lang, 'order_phone_placeholder')}
+                className="paper-input min-w-0 flex-1 rounded-xl px-4 py-3 text-base outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleLookup}
+                disabled={loading || !phone.trim() || !orderId.trim()}
+                className="rounded-xl px-4 py-3 text-sm font-semibold disabled:opacity-50"
+                style={{ background: 'var(--tg-theme-button-color)', color: 'var(--tg-theme-button-text-color)' }}
+              >
+                🔍
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Orders list */}
@@ -252,6 +218,20 @@ export function ProfilePage() {
           </div>
         )}
       </section>
+
+      {/* Admin entry (server re-checks permissions) */}
+      {isAdminUser() && (
+        <section className="px-4 pb-3">
+          <Link
+            to="/admin"
+            className="flex items-center justify-between rounded-2xl p-4 font-semibold"
+            style={{ background: 'var(--tg-theme-button-color)', color: 'var(--tg-theme-button-text-color)' }}
+          >
+            <span>⚙️ {lang === 'ru' ? 'Админ-панель' : 'Admin panel'}</span>
+            <span>→</span>
+          </Link>
+        </section>
+      )}
 
       {/* About link */}
       <section className="px-4 pb-6">

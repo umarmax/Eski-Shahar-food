@@ -32,7 +32,7 @@ export function PageHeader({ title, subtitle, showBack = false }: PageHeaderProp
         )}
         <div className="flex-1">
           <h1
-            className="text-2xl font-bold"
+            className="font-serif text-3xl font-bold leading-tight"
             style={{ color: 'var(--tg-theme-text-color)' }}
           >
             {title}

@@ -1,42 +1,34 @@
 // Supabase Edge Function: telegram-bot
-// Deploy: supabase functions deploy telegram-bot
+// Deploy: supabase functions deploy telegram-bot --no-verify-jwt
 //
-// 1. Register webhook with Telegram:
+// 1. Register webhook with Telegram (secret_token is REQUIRED):
 //    POST https://api.telegram.org/bot<TOKEN>/setWebhook
-//    Body: { 
+//    Body: {
 //      "url": "https://<project>.supabase.co/functions/v1/telegram-bot",
-//      "secret_token": "your-random-secret-string"
+//      "secret_token": "<same value as TELEGRAM_WEBHOOK_SECRET>",
+//      "allowed_updates": ["message", "callback_query"]
 //    }
 //
-// 2. Required env vars in Supabase Dashboard → Settings → Edge Functions:
+// 2. Required secrets (supabase secrets set ...):
 //    TELEGRAM_BOT_TOKEN          — from @BotFather
-//    TELEGRAM_ADMIN_CHAT_ID      — your personal Telegram chat ID (get from @userinfobot)
-//    MINI_APP_URL                — your deployed mini app URL (e.g. https://choyxona.vercel.app)
-//    TELEGRAM_WEBHOOK_SECRET     — random string for webhook validation (optional but recommended)
+//    ADMIN_TELEGRAM_IDS          — optional, comma-separated admin ids (defaults in _shared/telegram.ts)
+//    TELEGRAM_WEBHOOK_SECRET     — random string, must match setWebhook secret_token
+//    MINI_APP_URL                — deployed mini app URL
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const TELEGRAM_API = 'https://api.telegram.org'
-
-interface TelegramUpdate {
-  update_id: number
-  message?: TelegramMessage
-  callback_query?: TelegramCallbackQuery
-}
-
-interface TelegramMessage {
-  message_id: number
-  from?: TelegramUser
-  chat: TelegramChat
-  text?: string
-}
-
-interface TelegramCallbackQuery {
-  id: string
-  from: TelegramUser
-  data?: string
-  message?: TelegramMessage
-}
+import {
+  botLang,
+  createServiceClient,
+  escapeHtml,
+  getAdminIds,
+  isAdminId,
+  mapLinks,
+  notifyCustomerStatus,
+  secretsMatch,
+  sendLocation,
+  sendMessage,
+  shortId,
+  tgCall,
+} from '../_shared/telegram.ts'
 
 interface TelegramUser {
   id: number
@@ -46,307 +38,226 @@ interface TelegramUser {
   language_code?: string
 }
 
-interface TelegramChat {
-  id: number
-  type: string
+interface TelegramMessage {
+  message_id: number
+  from?: TelegramUser
+  chat: { id: number; type: string }
+  text?: string
+  location?: { latitude: number; longitude: number; horizontal_accuracy?: number }
 }
 
-// HTML escape to prevent XSS in Telegram messages
-function escapeHtml(text: string): string {
-  const map: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#039;',
-  }
-  return text.replace(/[&<>"']/g, (m) => map[m])
-}
-
-// Rate limiting for notification endpoint
-const notificationRateLimit = new Map<string, number[]>()
-
-function checkNotificationRateLimit(orderId: string): boolean {
-  const now = Date.now()
-  const timestamps = notificationRateLimit.get(orderId) || []
-  
-  // Remove timestamps older than 1 minute
-  const recentTimestamps = timestamps.filter(t => now - t < 60000)
-  
-  // Max 3 notifications per order per minute
-  if (recentTimestamps.length >= 3) {
-    return false
-  }
-  
-  recentTimestamps.push(now)
-  notificationRateLimit.set(orderId, recentTimestamps)
-  
-  // Cleanup old entries (keep last 1000)
-  if (notificationRateLimit.size > 1000) {
-    const oldestKey = notificationRateLimit.keys().next().value
-    notificationRateLimit.delete(oldestKey)
-  }
-  
-  return true
-}
-
-async function sendMessage(
-  botToken: string,
-  chatId: number | string,
-  text: string,
-  extra?: Record<string, unknown>,
-) {
-  const res = await fetch(`${TELEGRAM_API}/bot${botToken}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', ...extra }),
-  })
-  return res.json()
-}
-
-async function answerCallbackQuery(
-  botToken: string,
-  callbackQueryId: string,
-  text?: string,
-) {
-  await fetch(`${TELEGRAM_API}/bot${botToken}/answerCallbackQuery`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ callback_query_id: callbackQueryId, text }),
-  })
-}
-
-/**
- * Notify admin about a new order.
- * Called from create-order Edge Function after successful order creation
- */
-async function notifyAdminNewOrder(
-  botToken: string,
-  adminChatId: string,
-  order: {
+interface TelegramUpdate {
+  update_id: number
+  message?: TelegramMessage
+  callback_query?: {
     id: string
-    total: number
-    customer_name: string | null
-    customer_phone: string | null
-    delivery_address: string | null
-    comment: string | null
-    telegram_username: string | null
-    items: Array<{ name: string; quantity: number; price: number }>
-  },
-) {
-  // Sanitize all user inputs to prevent XSS
-  const safeName = order.customer_name ? escapeHtml(order.customer_name) : '—'
-  const safePhone = order.customer_phone ? escapeHtml(order.customer_phone) : null
-  const safeAddress = order.delivery_address ? escapeHtml(order.delivery_address) : null
-  const safeComment = order.comment ? escapeHtml(order.comment) : null
-  const safeUsername = order.telegram_username ? escapeHtml(order.telegram_username) : null
+    from: TelegramUser
+    data?: string
+    message?: TelegramMessage
+  }
+}
 
-  // Limit comment length for Telegram (max 4096 chars per message)
-  const truncatedComment = safeComment && safeComment.length > 200 
-    ? safeComment.slice(0, 200) + '...' 
-    : safeComment
+const MANAGER_PHONE = '+998 90 799 29 29'
+const LOCATION_WINDOW_MS = 2 * 60 * 60 * 1000
 
-  const itemLines = order.items
-    .map(
-      (i) =>
-        `  • ${escapeHtml(i.name)} × ${i.quantity} шт — ${(i.price * i.quantity).toLocaleString('ru')} сум`,
-    )
-    .join('\n')
+async function handleStart(botToken: string, msg: TelegramMessage, miniAppUrl?: string) {
+  const firstName = escapeHtml(msg.from?.first_name ?? 'Mehmon')
+  const lang = botLang(msg.from?.language_code ?? 'uz')
 
-  const text = [
-    `🍽 <b>Yangi buyurtma #${order.id.slice(0, 8)}</b>`,
-    '',
-    `💰 <b>Jami:</b> ${order.total.toLocaleString('ru')} so'm`,
-    '',
-    `👤 <b>Mijoz:</b> ${safeName}`,
-    safePhone ? `📞 <b>Telefon:</b> ${safePhone}` : null,
-    safeAddress ? `📍 <b>Manzil:</b> ${safeAddress}` : null,
-    safeUsername ? `✈️ <b>Telegram:</b> @${safeUsername}` : null,
-    truncatedComment ? `💬 <b>Izoh:</b> ${truncatedComment}` : null,
-    '',
-    `<b>Buyurtma tarkibi:</b>`,
-    itemLines,
+  const greeting = lang === 'uz'
+    ? `🍽 <b>Eski Shahar'ga xush kelibsiz!</b>
+
+Hurmatli <b>${firstName}</b>, sizni qabul qilishdan mamnunmiz!
+
+🏠 Bizda:
+• 🍲 An'anaviy o'zbek taomlari
+• 🫖 Choy va shirinliklar
+• 🥗 Yangi salatlar
+• 🍢 Mazali kaboblar
+
+📍 <b>Manzil:</b> Toshkent shahri, Shayxontohur tumani, Chorsu bozori
+📞 <b>Telefon:</b> ${MANAGER_PHONE}
+
+Menyuni ko'rish va buyurtma berish uchun quyidagi tugmani bosing! 👇`
+    : `🍽 <b>Добро пожаловать в Eski Shahar!</b>
+
+Уважаемый <b>${firstName}</b>, мы рады приветствовать вас!
+
+🏠 У нас:
+• 🍲 Традиционные узбекские блюда
+• 🫖 Чай и сладости
+• 🥗 Свежие салаты
+• 🍢 Вкусные шашлыки
+
+📍 <b>Адрес:</b> г. Ташкент, Шайхантахурский район, рынок Чорсу
+📞 <b>Телефон:</b> ${MANAGER_PHONE}
+
+Нажмите кнопку ниже, чтобы посмотреть меню и сделать заказ! 👇`
+
+  const inline_keyboard = [
+    ...(miniAppUrl
+      ? [[{ text: lang === 'uz' ? '🍽 Menyuni ochish' : '🍽 Открыть меню', web_app: { url: miniAppUrl } }]]
+      : []),
+    ...(miniAppUrl && isAdminId(msg.from?.id)
+      ? [[{ text: lang === 'uz' ? '⚙️ Admin panel' : '⚙️ Админ-панель', web_app: { url: `${miniAppUrl}/admin` } }]]
+      : []),
   ]
-    .filter((l) => l !== null)
-    .join('\n')
 
-  await sendMessage(botToken, adminChatId, text, {
-    reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: '✅ Tasdiqlash',
-            callback_data: `confirm_order:${order.id}`,
-          },
-          {
-            text: '❌ Bekor qilish',
-            callback_data: `cancel_order:${order.id}`,
-          },
-        ],
-      ],
-    },
-  })
+  await sendMessage(botToken, msg.chat.id, greeting, inline_keyboard.length ? { reply_markup: { inline_keyboard } } : undefined)
 }
 
-/**
- * Send order confirmation to customer via Telegram
- */
-async function sendOrderConfirmationToCustomer(
-  botToken: string,
-  telegramUserId: number,
-  order: {
-    id: string
-    total: number
-    customer_name: string | null
-    items: Array<{ name: string; quantity: number; price: number }>
-  },
-  langCode: string = 'ru',
-) {
-  const safeName = order.customer_name ? escapeHtml(order.customer_name) : ''
-  const orderId = order.id.slice(0, 8)
-  
-  const itemLines = order.items
-    .map(
-      (i) =>
-        `  • ${escapeHtml(i.name)} × ${i.quantity} — ${(i.price * i.quantity).toLocaleString('ru')} сум`,
+// deno-lint-ignore no-explicit-any
+async function handleLocation(botToken: string, supabase: any, msg: TelegramMessage) {
+  const from = msg.from
+  const loc = msg.location
+  if (!from || !loc || msg.chat.type !== 'private') return
+
+  const since = new Date(Date.now() - LOCATION_WINDOW_MS).toISOString()
+  const { data: order } = await supabase
+    .from('orders')
+    .select('id, lang, customer_name, customer_phone')
+    .eq('telegram_user_id', from.id)
+    .is('delivery_lat', null)
+    .gte('location_requested_at', since)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const lang = botLang(order?.lang ?? from.language_code)
+
+  if (!order) {
+    await sendMessage(
+      botToken,
+      msg.chat.id,
+      lang === 'uz'
+        ? "🤔 Joylashuv kutilayotgan faol buyurtma topilmadi. Buyurtma berish uchun menyuni oching."
+        : '🤔 Не нашли активный заказ, ожидающий геолокацию. Откройте меню, чтобы сделать заказ.',
+      { reply_markup: { remove_keyboard: true } },
     )
-    .join('\n')
-
-  let text: string
-  let btnTrack: string
-
-  if (langCode.startsWith('uz')) {
-    text = [
-      `✅ <b>Buyurtmangiz qabul qilindi!</b>`,
-      '',
-      `📋 <b>Buyurtma №:</b> ${orderId}`,
-      safeName ? `👤 <b>Mijoz:</b> ${safeName}` : null,
-      '',
-      `<b>Tarkibi:</b>`,
-      itemLines,
-      '',
-      `💰 <b>Jami:</b> ${order.total.toLocaleString('ru')} so'm`,
-      '',
-      `⏳ Buyurtmangiz tayyorlanmoqda. Tez orada siz bilan bog'lanamiz!`,
-    ].filter(l => l !== null).join('\n')
-    btnTrack = '📦 Buyurtmani kuzatish'
-  } else {
-    // Russian (default for all non-Uzbek users)
-    text = [
-      `✅ <b>Ваш заказ принят!</b>`,
-      '',
-      `📋 <b>Заказ №:</b> ${orderId}`,
-      safeName ? `👤 <b>Клиент:</b> ${safeName}` : null,
-      '',
-      `<b>Состав:</b>`,
-      itemLines,
-      '',
-      `💰 <b>Итого:</b> ${order.total.toLocaleString('ru')} сум`,
-      '',
-      `⏳ Ваш заказ готовится. Мы скоро свяжемся с вами!`,
-    ].filter(l => l !== null).join('\n')
-    btnTrack = '📦 Отследить заказ'
+    return
   }
 
-  const miniAppUrl = Deno.env.get('MINI_APP_URL')
-  
-  await sendMessage(botToken, telegramUserId, text, {
-    parse_mode: 'HTML',
-    reply_markup: miniAppUrl ? {
-      inline_keyboard: [
-        [
-          {
-            text: btnTrack,
-            web_app: { url: `${miniAppUrl}/profile` },
-          },
-        ],
-      ],
-    } : undefined,
-  })
+  const accuracy = loc.horizontal_accuracy ?? null
+  const { error } = await supabase
+    .from('orders')
+    .update({
+      delivery_lat: loc.latitude,
+      delivery_lng: loc.longitude,
+      location_accuracy: accuracy,
+      location_source: 'bot',
+    })
+    .eq('id', order.id)
+
+  if (error) {
+    console.error('[Location] Update failed:', error.message)
+    await sendMessage(
+      botToken,
+      msg.chat.id,
+      lang === 'uz' ? "⚠️ Xatolik yuz berdi, qayta urinib ko'ring." : '⚠️ Произошла ошибка, попробуйте ещё раз.',
+    )
+    return
+  }
+
+  await sendMessage(
+    botToken,
+    msg.chat.id,
+    lang === 'uz'
+      ? `✅ Joylashuv qabul qilindi (buyurtma #${shortId(order.id)}). Rahmat!`
+      : `✅ Геолокация получена (заказ #${shortId(order.id)}). Спасибо!`,
+    { reply_markup: { remove_keyboard: true } },
+  )
+
+  const who = [order.customer_name, order.customer_phone].filter(Boolean).map((s: string) => escapeHtml(s)).join(', ')
+  for (const adminId of getAdminIds()) {
+    try {
+      const sent = await sendMessage(
+        botToken,
+        adminId,
+        `📍 <b>#${shortId(order.id)} uchun joylashuv</b>${who ? `
+👤 ${who}` : ''}
+🗺 ${mapLinks(loc.latitude, loc.longitude)}`,
+      )
+      await sendLocation(botToken, adminId, loc.latitude, loc.longitude, {
+        horizontal_accuracy: accuracy ?? undefined,
+        reply_parameters: sent?.result?.message_id
+          ? { message_id: sent.result.message_id, allow_sending_without_reply: true }
+          : undefined,
+      })
+    } catch (e) {
+      console.error(`[Location] Admin ${adminId} notify failed:`, e)
+    }
+  }
 }
 
-Deno.serve(async (req) => {
-  // Validate required environment variables
-  const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN')
-  const adminChatId = Deno.env.get('TELEGRAM_ADMIN_CHAT_ID')
-  const miniAppUrl = Deno.env.get('MINI_APP_URL')
-  const webhookSecret = Deno.env.get('TELEGRAM_WEBHOOK_SECRET')
-
-  if (!botToken || !adminChatId) {
-    console.error('[TelegramBot] Missing required environment variables')
-    return new Response('Service unavailable', { status: 503 })
+async function handleOrderCallback(
+  botToken: string,
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  cb: NonNullable<TelegramUpdate['callback_query']>,
+) {
+  const isAdmin = isAdminId(cb.from.id)
+  if (!isAdmin) {
+    await tgCall(botToken, 'answerCallbackQuery', { callback_query_id: cb.id, text: '⛔' })
+    return
   }
 
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  }
+  const [action, orderId] = (cb.data ?? '').split(':')
+  const newStatus = action === 'confirm_order' ? 'confirmed' : 'cancelled'
 
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  const { data: order, error } = await supabase
+    .from('orders')
+    .update({ status: newStatus })
+    .eq('id', orderId)
+    .eq('status', 'pending')
+    .select('id, telegram_user_id, lang')
+    .maybeSingle()
 
-  const url = new URL(req.url)
-
-  // ── Internal endpoint: POST /functions/v1/telegram-bot/notify-order ──
-  if (url.pathname.endsWith('/notify-order') && req.method === 'POST') {
-    try {
-      const order = await req.json()
-
-      // Validate order data
-      if (!order?.id || !order?.items || !Array.isArray(order.items)) {
-        return new Response(JSON.stringify({ error: 'Invalid order data' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+  if (error || !order) {
+    await tgCall(botToken, 'answerCallbackQuery', {
+      callback_query_id: cb.id,
+      text: 'Buyurtma allaqachon qayta ishlangan',
+    })
+  } else {
+    await tgCall(botToken, 'answerCallbackQuery', {
+      callback_query_id: cb.id,
+      text: newStatus === 'confirmed' ? '✅ Buyurtma tasdiqlandi' : '❌ Buyurtma bekor qilindi',
+    })
+    if (order.telegram_user_id) {
+      try {
+        await notifyCustomerStatus(botToken, order.telegram_user_id, order.id, newStatus, order.lang)
+      } catch (e) {
+        console.error('[Callback] Customer status notify failed:', e)
       }
-
-      // Check rate limit
-      if (!checkNotificationRateLimit(order.id)) {
-        console.warn(`[NotifyOrder] Rate limit exceeded for order ${order.id}`)
-        return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
-      }
-
-      // Notify admin
-      await notifyAdminNewOrder(botToken, adminChatId, order)
-      
-      // Send confirmation to customer if telegram_user_id is provided
-      if (order.telegram_user_id) {
-        try {
-          await sendOrderConfirmationToCustomer(
-            botToken,
-            order.telegram_user_id,
-            order,
-            order.lang_code || 'ru'
-          )
-          console.log(`[NotifyOrder] Sent confirmation to customer ${order.telegram_user_id}`)
-        } catch (customerErr) {
-          console.error('[NotifyOrder] Failed to notify customer:', customerErr)
-          // Don't fail the whole request if customer notification fails
-        }
-      }
-      
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    } catch (err) {
-      console.error('[NotifyOrder] Error:', err)
-      return new Response(JSON.stringify({ error: 'Notification failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
     }
   }
 
-  // ── Telegram webhook ──
+  if (cb.message) {
+    await tgCall(botToken, 'editMessageReplyMarkup', {
+      chat_id: cb.message.chat.id,
+      message_id: cb.message.message_id,
+      reply_markup: { inline_keyboard: [] },
+    })
+  }
+}
+
+Deno.serve(async (req) => {
+  const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN')
+  const miniAppUrl = Deno.env.get('MINI_APP_URL')
+  const webhookSecret = Deno.env.get('TELEGRAM_WEBHOOK_SECRET')
+
+  if (!botToken || !webhookSecret) {
+    console.error('[TelegramBot] Missing TELEGRAM_BOT_TOKEN / TELEGRAM_WEBHOOK_SECRET')
+    return new Response('Service unavailable', { status: 503 })
+  }
+
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
   }
 
-  void webhookSecret // suppress unused warning
+  // Only Telegram knows the secret token set via setWebhook
+  if (!secretsMatch(req.headers.get('X-Telegram-Bot-Api-Secret-Token'), webhookSecret)) {
+    return new Response('Unauthorized', { status: 401 })
+  }
 
   let update: TelegramUpdate
   try {
@@ -355,98 +266,22 @@ Deno.serve(async (req) => {
     return new Response('Bad request', { status: 400 })
   }
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  )
+  try {
+    const supabase = createServiceClient()
 
-  // ── Handle /start command ──
-  if (update.message?.text?.startsWith('/start')) {
-    const chat = update.message.chat
-    const firstName = escapeHtml(update.message.from?.first_name ?? 'Mehmon')
-    const langCode = update.message.from?.language_code ?? 'uz'
-
-    const MANAGER_USERNAME = 'eskishahar_admin'
-    const MANAGER_PHONE = '+998 90 123 45 67'
-
-    let greeting: string
-    let btnMenu: string
-    let btnContact: string
-
-    if (langCode.startsWith('uz')) {
-      greeting = `🍵 <b>Eski Shahar Choyxonasiga xush kelibsiz!</b> 🍵\n\nHurmatli <b>${firstName}</b>, sizni qabul qilishdan mamnunmiz!\n\n🏠 Bizning choyxonada:\n• 🍲 An'anaviy o'zbek taomlari\n• 🫖 Choy va shirinliklar\n• 🥗 Yangi salatlar\n• 🍢 Mazali kaboblar\n\n📍 <b>Manzil:</b> Toshkent, Eski Shahar ko'chasi\n📞 <b>Telefon:</b> ${MANAGER_PHONE}\n\nMenyuni ko'rish va buyurtma berish uchun quyidagi tugmani bosing! 👇`
-      btnMenu = '🍽 Menyuni ochish'
-      btnContact = '📞 Bog\'lanish'
-    } else {
-      // Russian (default for all non-Uzbek users)
-      greeting = `🍵 <b>Добро пожаловать в Eski Shahar Choyxona!</b> 🍵\n\nУважаемый <b>${firstName}</b>, мы рады приветствовать вас!\n\n🏠 В нашей чайхане:\n• 🍲 Традиционные узбекские блюда\n• 🫖 Чай и сладости\n• 🥗 Свежие салаты\n• 🍢 Вкусные шашлыки\n\n📍 <b>Адрес:</b> Ташкент, улица Эски Шахар\n📞 <b>Телефон:</b> ${MANAGER_PHONE}\n\nНажмите кнопку ниже, чтобы посмотреть меню и сделать заказ! 👇`
-      btnMenu = '🍽 Открыть меню'
-      btnContact = '📞 Связаться'
+    if (update.message?.text?.startsWith('/start')) {
+      await handleStart(botToken, update.message, miniAppUrl)
+    } else if (update.message?.location) {
+      await handleLocation(botToken, supabase, update.message)
+    } else if (
+      update.callback_query?.data?.startsWith('confirm_order:') ||
+      update.callback_query?.data?.startsWith('cancel_order:')
+    ) {
+      await handleOrderCallback(botToken, supabase, update.callback_query)
     }
-
-    await sendMessage(
-      botToken,
-      chat.id,
-      greeting,
-      miniAppUrl
-        ? {
-            parse_mode: 'HTML',
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: btnMenu,
-                    web_app: { url: miniAppUrl },
-                  },
-                ],
-                [
-                  {
-                    text: btnContact,
-                    url: `https://t.me/${MANAGER_USERNAME}`,
-                  },
-                ],
-              ],
-            },
-          }
-        : { parse_mode: 'HTML' },
-    )
-    return new Response('ok')
-  }
-
-  // ── Handle admin inline button callbacks (confirm/cancel order) ──
-  if (update.callback_query) {
-    const { id: cbId, data } = update.callback_query
-
-    if (data?.startsWith('confirm_order:') || data?.startsWith('cancel_order:')) {
-      const [action, orderId] = data.split(':')
-      const newStatus = action === 'confirm_order' ? 'confirmed' : 'cancelled'
-
-      await supabase
-        .from('orders')
-        .update({ status: newStatus })
-        .eq('id', orderId)
-
-      await answerCallbackQuery(
-        botToken,
-        cbId,
-        newStatus === 'confirmed' ? '✅ Buyurtma tasdiqlandi' : '❌ Buyurtma bekor qilindi',
-      )
-
-      // Edit the admin message to remove buttons
-      if (update.callback_query.message) {
-        await fetch(`${TELEGRAM_API}/bot${botToken}/editMessageReplyMarkup`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: update.callback_query.message.chat.id,
-            message_id: update.callback_query.message.message_id,
-            reply_markup: { inline_keyboard: [] },
-          }),
-        })
-      }
-    }
-
-    return new Response('ok')
+  } catch (e) {
+    // Always 200 so Telegram doesn't retry the same update forever
+    console.error('[TelegramBot] Handler error:', e)
   }
 
   return new Response('ok')

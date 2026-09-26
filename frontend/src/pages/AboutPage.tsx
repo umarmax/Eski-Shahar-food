@@ -4,29 +4,12 @@ import { PageHeader } from '../components/PageHeader'
 import { useSettingsStore } from '../store/settingsStore'
 import { t } from '../lib/i18n'
 import { WebApp } from '../lib/telegram'
-
-const CAFE_INFO = {
-  name: 'Eski Shahar Choyxona',
-  address: "Toshkent shahri, Chilonzor tumani, 1-mavze",
-  address_uz: "Toshkent shahri, Chilonzor tumani, 1-mavze",
-  address_ru: "г. Ташкент, Чиланзарский район, 1-й массив",
-  address_en: "Tashkent city, Chilanzar district, 1st block",
-  hours: '10:00 - 23:00',
-  phone: '+998901234567',
-  phone_display: '+998 90 123 45 67',
-  telegram: 'eskishahar_bot',
-  instagram: 'eskishahar_choyxona',
-  yandex_maps: 'https://yandex.uz/maps/-/CDxqJK~r',
-}
+import { BUSINESS } from '../config/business'
 
 export function AboutPage() {
   const lang = useSettingsStore((s) => s.language)
 
-  const getAddress = () => {
-    if (lang === 'uz') return CAFE_INFO.address_uz
-    if (lang === 'ru') return CAFE_INFO.address_ru
-    return CAFE_INFO.address_en
-  }
+  const getAddress = () => BUSINESS.address[lang]
 
   return (
     <Layout hideNav>
@@ -47,7 +30,7 @@ export function AboutPage() {
             className="mb-2 text-xl font-bold"
             style={{ color: 'var(--tg-theme-text-color)' }}
           >
-            {CAFE_INFO.name}
+            {BUSINESS.name}
           </h2>
           <p
             className="text-sm"
@@ -77,9 +60,9 @@ export function AboutPage() {
           type="button"
           onClick={() => {
             try {
-              WebApp.openLink(CAFE_INFO.yandex_maps)
+              WebApp.openLink(BUSINESS.mapUrl)
             } catch {
-              window.open(CAFE_INFO.yandex_maps, '_blank')
+              window.open(BUSINESS.mapUrl, '_blank')
             }
           }}
           className="glass-card w-full rounded-2xl p-4 text-left"
@@ -127,7 +110,7 @@ export function AboutPage() {
                 className="font-medium"
                 style={{ color: 'var(--tg-theme-text-color)' }}
               >
-                {CAFE_INFO.hours}
+                {BUSINESS.hours}
               </p>
               <p
                 className="text-xs"
@@ -159,9 +142,9 @@ export function AboutPage() {
           type="button"
           onClick={() => {
             try {
-              WebApp.openLink(`tel:${CAFE_INFO.phone}`)
+              WebApp.openLink(`tel:${BUSINESS.phone}`)
             } catch {
-              window.location.href = `tel:${CAFE_INFO.phone}`
+              window.location.href = `tel:${BUSINESS.phone}`
             }
           }}
           className="glass-card w-full rounded-2xl p-4 text-left"
@@ -172,7 +155,7 @@ export function AboutPage() {
               className="font-medium"
               style={{ color: 'var(--tg-theme-text-color)' }}
             >
-              {CAFE_INFO.phone_display}
+              {BUSINESS.phoneDisplay}
             </p>
           </div>
         </button>
@@ -196,9 +179,9 @@ export function AboutPage() {
             type="button"
             onClick={() => {
               try {
-                WebApp.openTelegramLink(`https://t.me/${CAFE_INFO.telegram}`)
+                WebApp.openTelegramLink(`https://t.me/${BUSINESS.botUsername}`)
               } catch {
-                window.open(`https://t.me/${CAFE_INFO.telegram}`, '_blank')
+                window.open(`https://t.me/${BUSINESS.botUsername}`, '_blank')
               }
             }}
             className="glass-card w-full rounded-2xl p-4 text-left"
@@ -209,28 +192,7 @@ export function AboutPage() {
                 className="font-medium"
                 style={{ color: 'var(--tg-theme-text-color)' }}
               >
-                @{CAFE_INFO.telegram}
-              </p>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              try {
-                WebApp.openLink(`https://instagram.com/${CAFE_INFO.instagram}`)
-              } catch {
-                window.open(`https://instagram.com/${CAFE_INFO.instagram}`, '_blank')
-              }
-            }}
-            className="glass-card w-full rounded-2xl p-4 text-left"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">📸</span>
-              <p
-                className="font-medium"
-                style={{ color: 'var(--tg-theme-text-color)' }}
-              >
-                @{CAFE_INFO.instagram}
+                @{BUSINESS.botUsername}
               </p>
             </div>
           </button>

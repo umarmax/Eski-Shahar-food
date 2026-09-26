@@ -1,7 +1,7 @@
-# Session Context: Choyxona Telegram Mini App
+# Session Context: Eski Shahar Food Telegram Mini App
 
-> **Last Updated:** July 2, 2026 (16:25)  
-> **Admin Telegram ID:** 943196988  
+> **Last Updated:** September 26, 2026  
+> **Admin Telegram ID:** stored only in Supabase secret `TELEGRAM_ADMIN_CHAT_ID` (older notes listed both 943196988 and 6314294625 — verify which is live)  
 > **GitHub:** https://github.com/umarmax/Eski-Shahar-food (Public)  
 > **Supabase Project:** icjrhufmtqedmihjogco  
 > **Vercel:** Auto-deploys from GitHub pushes
@@ -20,7 +20,23 @@
 | Telegram SDK | Native `window.Telegram.WebApp` (NOT @twa-dev/sdk) |
 | Deployment | Vercel (frontend) + Supabase (backend) |
 
-### Recent Changes (July 2, 2026)
+### Session 6 (September 26, 2026)
+- Business info: Tashkent, Shayxontohur district, Chorsu market · +998 90 799 29 29 (`frontend/src/config/business.ts`)
+- Removed the word "choyxona" from the UI/bot and removed "free delivery" claims
+- Bot username → **@eskishaharfood_bot**
+- **Admin panel** `/admin` (admin-products Edge Function + migration 005): dish CRUD, photo upload, stop-list toggle
+- Admins `8627067211`, `6237960948` receive every order + location pin (the old TELEGRAM_ADMIN_CHAT_ID is no longer used)
+
+### Recent Changes (September 26, 2026) — Session 5
+- **Security lock-down** (migration 004): no anon access to `orders`/`profiles`; lookups via `my-orders` edge function
+- **Webhook secret** enforced in `telegram-bot`; admin-only order buttons; `/notify-order` endpoint removed
+- **create-order** trusts only HMAC-verified `initData` for Telegram identity; sends notifications directly
+- **Delivery location at checkout**: Telegram LocationManager button + bot `request_location` fallback; admin gets map links + native pin
+- **Order success screen** with order number + copy
+- **Old-paper UI**: animated girih pattern background, parallax, tap "ink bloom", parchment palette
+- Fixed: MainButton handler leak, Telegram BackButton wiring, profile upserts, double HTML escaping, hardcoded RU language
+
+### Earlier Changes (July 2, 2026)
 - **Fixed Telegram WebApp SDK** - Switched from `@twa-dev/sdk` to native `window.Telegram.WebApp`
 - **Added Order ID Lookup** - Profile page now supports searching by order number
 - **Customer Order Confirmation** - Bot sends order summary to customer after order
@@ -74,13 +90,14 @@ eski-shahar/
 ```env
 VITE_SUPABASE_URL=https://icjrhufmtqedmihjogco.supabase.co
 VITE_SUPABASE_ANON_KEY=sb_publishable_-3Q-Qn2C33twoV_MZJSWMA_LyqE1Lho
-VITE_TELEGRAM_BOT_USERNAME=eskishahar_bot
+VITE_TELEGRAM_BOT_USERNAME=eskishaharfood_bot
 ```
 
 ### Supabase Edge Function Secrets
 ```
 TELEGRAM_BOT_TOKEN=<from @BotFather> ✅ SET
-TELEGRAM_ADMIN_CHAT_ID=6314294625
+TELEGRAM_ADMIN_CHAT_ID=<admin chat id>
+TELEGRAM_WEBHOOK_SECRET=<random string, same as setWebhook secret_token> ⚠️ REQUIRED
 MINI_APP_URL=https://eski-shahar-food.vercel.app (NEEDS VERIFICATION)
 ```
 
@@ -93,10 +110,13 @@ MINI_APP_URL=https://eski-shahar-food.vercel.app (NEEDS VERIFICATION)
 - **orders** - Customer orders (items, total, status, phone, telegram_user_id)
 - **profiles** - User profiles (phone, telegram_id, name)
 
-### RLS Policies (Updated)
+### RLS Policies (migration 004)
 - **Products:** Public read
-- **Orders:** Public read (for phone/order ID lookup), public insert
-- **Profiles:** Public read/write (for guest checkout)
+- **Orders:** No anon access — only Edge Functions (service role)
+- **Profiles:** No anon access — only Edge Functions (service role)
+
+### Orders location columns
+`delivery_lat`, `delivery_lng`, `location_accuracy`, `location_source` ('app' | 'bot'), `location_requested_at`, `lang`
 
 ---
 
@@ -124,19 +144,9 @@ MINI_APP_URL=https://eski-shahar-food.vercel.app (NEEDS VERIFICATION)
 **Fix Applied:** Switched to native `window.Telegram.WebApp`  
 **Status:** Needs testing in Telegram Mini App
 
-### Workaround for Order Lookup
-Users can find orders by:
-1. **Phone number** - Enter the phone used during checkout
-2. **Order ID** - Enter the 8-character order number (e.g., `5b8d0204`)
-
----
-
-## 📊 Current Orders in Database
-
-| Order ID | Phone | Name | Total | Status |
-|----------|-------|------|-------|--------|
-| 5b8d0204 | +998999144444 | Sh | 45,000 | pending |
-| aeaa09c4 | +998999144445 | hhh | 45,000 | pending |
+### Order Lookup
+- Inside Telegram: orders load automatically (signed initData → `my-orders`)
+- Outside Telegram: **order number + phone** both required
 
 ---
 
@@ -146,8 +156,9 @@ Users can find orders by:
 # Deploy Edge Functions
 cd frontend
 supabase functions deploy telegram-auth
-supabase functions deploy telegram-bot
+supabase functions deploy telegram-bot --no-verify-jwt
 supabase functions deploy create-order
+supabase functions deploy my-orders
 
 # Push migrations
 supabase db push
@@ -178,17 +189,18 @@ git add -A && git commit -m "message" && git push origin main
 
 ## � TODO: Next Steps
 
-### High Priority (Immediate)
-- [ ] Test Telegram auth in real Mini App environment
-- [ ] Verify MINI_APP_URL is set correctly in Supabase secrets
-- [ ] Set up Telegram bot webhook if not done
-- [ ] Test order flow end-to-end
+### High Priority (Immediate — deploy Session 5)
+- [ ] `supabase db push` (migrations 004 + 005)
+- [ ] `supabase secrets set TELEGRAM_WEBHOOK_SECRET=...` and re-run `setWebhook` with `secret_token`
+- [ ] Deploy all 5 functions (`telegram-bot` with `--no-verify-jwt`, new `my-orders`, new `admin-products`)
+- [ ] Both admins press /start in @eskishaharfood_bot; set Vercel env `VITE_TELEGRAM_BOT_USERNAME=eskishaharfood_bot`
+- [ ] Verify MINI_APP_URL in Supabase secrets
+- [ ] Test in real Telegram: in-app location, chat-location fallback, address-only order, UZ/RU messages
 
-### Medium Priority (This Week)
-- [ ] Add loading skeletons for better UX
-- [ ] Implement order status notifications to customer
-- [ ] Add "Copy Order ID" button after checkout
-- [ ] Remove debug console.log statements
+### Medium Priority
+- [ ] Admin status flow: preparing → on the way → delivered (each notifies customer)
+- [ ] Delivery zone / fee from coordinates
+- [ ] Loading skeletons on Product page
 
 ### Low Priority (Future)
 - [ ] Push notifications via Telegram

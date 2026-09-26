@@ -15,6 +15,7 @@ export interface Product {
   is_spicy?: boolean
   cook_time_minutes?: number
   calories?: number
+  is_available?: boolean
   created_at: string
 }
 
@@ -55,6 +56,8 @@ export interface Order {
   customer_name?: string
   customer_phone?: string
   delivery_address?: string
+  delivery_lat?: number | null
+  delivery_lng?: number | null
   comment?: string
   created_at: string
 }
@@ -63,13 +66,14 @@ export interface OrderPayload {
   items: {
     product_id: string
     quantity: number
-    notes?: string
   }[]
-  telegram_user_id?: number
-  telegram_username?: string
+  init_data?: string
+  lang: string
   customer_name: string
   customer_phone: string
   delivery_address?: string
+  delivery_location?: { lat: number; lng: number; accuracy: number | null }
+  location_via_chat?: boolean
   comment?: string
 }
 

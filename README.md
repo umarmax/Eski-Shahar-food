@@ -1,137 +1,100 @@
-# Choyxona — Premium Uzbek Café Telegram Mini App
+# Eski Shahar Food — Telegram Mini App
 
-A luxury food delivery Telegram Mini App inspired by Old Tashkent, Bukhara, and Samarkand — blending Apple-level minimalism with authentic Uzbek hospitality.
+Food-ordering Telegram Mini App for Eski Shahar (Tashkent, Shayxontohur district, Chorsu market · +998 90 799 29 29). Bot: @eskishaharfood_bot. Old-paper look with an animated Uzbek girih pattern, UZ/RU/EN UI, orders delivered to the admin through a Telegram bot.
 
 ## Stack
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | Next.js 15, TypeScript, Tailwind CSS v4, Framer Motion |
-| Telegram | `@twa-dev/sdk` — contact, location, haptics, theme |
-| Backend | Node.js, Express 5, Prisma ORM |
-| Database | PostgreSQL |
-| Images | Unsplash (dev) / Cloudinary (production) |
+| Frontend | React 19, Vite 8, TypeScript, Tailwind CSS v4, Framer Motion, Zustand |
+| Telegram | Native `window.Telegram.WebApp` (MainButton, BackButton, haptics, LocationManager) |
+| Backend | Supabase — Postgres + Edge Functions (Deno) |
+| Hosting | Vercel (frontend), Supabase (backend) |
 
-## Quick Start
+## Project structure
 
-### Prerequisites
-
-- Node.js 20+
-- A Supabase project with a Postgres database
-
-### Supabase setup
-
-1. Create a Supabase project at https://supabase.com
-2. Open Project Settings → Database
-3. Copy the connection string for the Postgres database
-4. Replace the placeholder password in the URL below and set it as `DATABASE_URL` in your environment
-
-Example:
-
-```env
-DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.icjrhufmtqedmihjogco.supabase.co:5432/postgres?sslmode=require
+```
+frontend/
+├── src/
+│   ├── components/   # Layout, AppBackground, LocationPicker, ProductCard, ...
+│   ├── pages/        # Home, Menu, Product, Cart, OrderForm, Profile, Settings, About
+│   ├── store/        # Zustand: cart, settings, auth, app (products)
+│   ├── lib/          # telegram.ts, supabase.ts, auth.ts, i18n.ts
+│   └── index.css     # paper palette + background layers
+└── supabase/
+    ├── migrations/   # 001…004 (004 = RLS lock-down + location columns)
+    └── functions/
+        ├── _shared/        # initData validation, Telegram API, order messages
+        ├── admin-products/ # menu management for admins (CRUD + photo upload URLs)
+        ├── create-order/   # validates + prices order server-side, notifies admin/customer
+        ├── my-orders/      # returns caller's orders (signed initData, or order ID + phone)
+        ├── telegram-auth/  # validates initData, upserts profile
+        └── telegram-bot/   # webhook: /start, shared locations, admin confirm/cancel
 ```
 
-If you want to use Prisma migrations, run:
+## Local development
 
 ```bash
 cd frontend
-npx prisma db push
-```
-
-### Setup
-
-```bash
-cd choyxona
-
-# Install dependencies
+cp .env.example .env   # VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_TELEGRAM_BOT_USERNAME
 npm install
-
-# Configure backend database
-cp backend/.env.example backend/.env
-# Edit DATABASE_URL in backend/.env
-
-# Push schema & seed menu
-npm run db:push
-npm run db:seed
-
-# Configure frontend
-cp frontend/.env.example frontend/.env
-
-# Run both servers
 npm run dev
 ```
 
-- Frontend: http://localhost:3000
-- API: http://localhost:3001
+Without Supabase env vars the app runs on mock menu data and mock orders. Outside Telegram the location button falls back to browser geolocation.
 
-### Telegram Bot Setup
+## Supabase deployment
 
-1. Create a bot via [@BotFather](https://t.me/BotFather)
-2. Set menu button URL to your deployed frontend
-3. Add `TELEGRAM_BOT_TOKEN` to `backend/.env` for order notifications (optional)
+```bash
+cd frontend
+supabase db push
 
-## Deploy to Vercel
+supabase secrets set TELEGRAM_BOT_TOKEN=... ADMIN_TELEGRAM_IDS=8627067211,6237960948 \
+  TELEGRAM_WEBHOOK_SECRET=<random-string> MINI_APP_URL=https://<your-app>.vercel.app
 
-You do not need to create separate frontend and backend projects.
-
-1. Push this repository to GitHub
-2. Create one new Vercel project
-3. Import the repository
-4. Set the project root to the repository root, or use the frontend folder as the app directory if Vercel asks for it
-5. Add these environment variables in Vercel:
-   - `DATABASE_URL`
-   - `NEXT_PUBLIC_ADMIN_TELEGRAM_ID`
-   - `TELEGRAM_BOT_TOKEN` (optional)
-   - `OPERATOR_CHAT_ID` (optional)
-6. Deploy
-
-The Next.js app in the frontend folder will be served from this single project, and Supabase will provide the database backend.
-
-## Features
-
-- **Home** — Cinematic hero, category carousel, chef picks, popular dishes
-- **Menu** — 9 categories with filters (vegetarian, spicy, price, cook time)
-- **Product** — Gallery, nutrition, ingredients, reviews, sticky add-to-cart
-- **Search** — Instant search by name, ingredients, category
-- **Cart** — Floating cart, promo codes (`SILKROAD10`), prep time estimate
-- **Checkout** — Telegram contact + live location via WebApp API
-- **Profile** — Order history, favorites, language (UZ/RU/EN)
-- **Admin** — Orders management, analytics, popular dishes
-
-## Design System
-
-| Token | Value |
-|-------|-------|
-| Walnut (primary) | `#8B5E3C` |
-| Golden sand | `#C79A5D` |
-| Emerald accent | `#2E6F57` |
-| Background | `#F8F3EB` |
-| Typography | Cormorant Garamond + DM Sans |
-| Radius | 18–24px |
-
-## Order Flow
-
-1. Customer adds items to cart
-2. Checkout — confirms order
-3. Telegram requests phone + location
-4. Order sent to admin panel
-5. Operator calls customer, confirms payment
-6. Kitchen prepares → courier delivers
-
-## Project Structure
-
-```
-choyxona/
-├── frontend/          # Next.js Telegram Mini App
-│   ├── app/           # Pages (App Router)
-│   ├── components/    # UI, layout, providers
-│   └── lib/           # API, store, i18n, types
-└── backend/           # Express API
-    ├── prisma/        # Schema + seed
-    └── src/           # Routes
+supabase functions deploy admin-products
+supabase functions deploy create-order
+supabase functions deploy my-orders
+supabase functions deploy telegram-auth
+supabase functions deploy telegram-bot --no-verify-jwt   # Telegram calls it without a JWT
 ```
 
-## Promo Code
+Register the webhook — `secret_token` must equal `TELEGRAM_WEBHOOK_SECRET`, otherwise the bot rejects every update:
 
-Use `SILKROAD10` for 10% off during checkout.
+```bash
+curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://<project>.supabase.co/functions/v1/telegram-bot","secret_token":"<TELEGRAM_WEBHOOK_SECRET>","allowed_updates":["message","callback_query"]}'
+```
+
+## Admin panel
+
+Admins (Telegram IDs `8627067211`, `6237960948`; override with the `ADMIN_TELEGRAM_IDS` secret and `VITE_ADMIN_TELEGRAM_IDS`) open it from **Profile → ⚙️ Admin panel**, from the bot's `/start` button, or at `/admin`:
+
+- add / edit / delete dishes — names and descriptions in UZ/RU/EN, price, category, cook time, calories, vegetarian/spicy flags;
+- upload or replace photos (compressed in the browser, stored in the public `product-images` bucket);
+- hide a dish from the menu with one toggle (stop-list).
+
+Every admin receives each new order in the bot chat with map links and a native location pin, plus ✅/❌ buttons. Admins must press **/start** in the bot once, otherwise Telegram does not let the bot message them.
+
+## Order flow
+
+1. Customer adds dishes to the cart and opens checkout.
+2. Delivery location — one of:
+   - **📍 Send my location** — Telegram's native LocationManager (Bot API 8.0+), browser geolocation as fallback;
+   - **"I'll send it in the chat"** — after the order the bot shows Telegram's native `request_location` keyboard button; the shared pin is attached to the order;
+   - or a typed address. At least one is required.
+3. `create-order` verifies the Telegram `initData`, recalculates prices from the DB and saves the order.
+4. Admin receives the order with Google/Yandex map links and a native map pin, plus ✅/❌ buttons.
+5. Customer gets a confirmation in the chat and a message whenever the admin confirms or cancels.
+
+## Security model
+
+- `orders` and `profiles` have **no** anon access; all reads/writes go through Edge Functions with the service role.
+- Telegram identity comes only from HMAC-verified `initData`.
+- Bot webhook requires `X-Telegram-Bot-Api-Secret-Token`; order buttons only work for the admin chat.
+- Outside Telegram, an order can be looked up only with **order number + phone**.
+
+## Design
+
+Parchment palette (`#F3E7CF` light / `#1F1811` dark), Cormorant Garamond headings + Inter body, walnut `#8B5E3C` buttons, gold `#C79A5D` ornaments. The background (`components/AppBackground.tsx`) layers paper grain, tea stains, a drifting girih pattern with scroll parallax and a golden "ink bloom" on tap; all motion is disabled under `prefers-reduced-motion`.

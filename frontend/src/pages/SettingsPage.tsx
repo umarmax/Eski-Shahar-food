@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Layout } from '../components/Layout'
 import { PageHeader } from '../components/PageHeader'
 import { useSettingsStore, type ThemeMode } from '../store/settingsStore'
+import { BUSINESS } from '../config/business'
 import { t, LANGUAGES } from '../lib/i18n'
 
 const themes: { code: ThemeMode; labelKey: 'theme_auto' | 'theme_light' | 'theme_dark'; icon: string }[] = [
@@ -120,7 +121,7 @@ export function SettingsPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-[var(--tg-theme-text-color)]">
-                    Eski Shahar Choyxona
+                    {BUSINESS.name}
                   </h3>
                   <p className="text-sm text-[var(--tg-theme-hint-color)]">
                     v1.0.0

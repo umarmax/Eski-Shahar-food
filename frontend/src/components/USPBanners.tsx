@@ -7,11 +7,6 @@ export function USPBanners() {
 
   const usps = [
     {
-      icon: '🚗',
-      title: t(lang, 'usp_delivery'),
-      subtitle: t(lang, 'usp_delivery_sub'),
-    },
-    {
       icon: '👨‍🍳',
       title: t(lang, 'usp_fresh'),
       subtitle: t(lang, 'usp_fresh_sub'),

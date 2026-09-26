@@ -1,14 +1,20 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useCartStore } from '../store/cartStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { WebApp } from '../lib/telegram'
 import { t } from '../lib/i18n'
 
+const BUTTON_COLOR = '#8B5E3C'
+const BUTTON_TEXT_COLOR = '#F8F3EB'
+
 /**
  * Syncs cart state with Telegram's MainButton.
  * Shows "View Cart" button when items are in cart (except on cart/order pages).
  * Shows "Checkout" button on cart page when items exist.
+ *
+ * A single stable click handler is registered once; the target route lives
+ * in a ref so re-renders never stack extra handlers.
  */
 export function TelegramMainButtonSync() {
   const navigate = useNavigate()
@@ -16,67 +22,50 @@ export function TelegramMainButtonSync() {
   const items = useCartStore((s) => s.items)
   const totalPrice = useCartStore((s) => s.totalPrice())
   const language = useSettingsStore((s) => s.language)
+  const targetRef = useRef('/cart')
+
+  useEffect(() => {
+    const handleClick = () => navigate(targetRef.current)
+    try {
+      WebApp.MainButton.onClick(handleClick)
+    } catch {
+      // Telegram SDK not available
+    }
+    return () => {
+      try { WebApp.MainButton.offClick(handleClick) } catch { /* ignore */ }
+    }
+  }, [navigate])
 
   useEffect(() => {
     try {
       const MainButton = WebApp.MainButton
-      if (!MainButton) return
-
       const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
-      const isCartPage = location.pathname === '/cart'
-      const isOrderPage = location.pathname === '/order'
-      const isProductPage = location.pathname.startsWith('/product/')
+      const path = location.pathname
 
-      // Hide button on order page (form submission handled separately)
-      if (isOrderPage) {
+      if (path === '/order' || path === '/admin' || itemCount === 0) {
         MainButton.hide()
         return
       }
 
-      // No items - hide button
-      if (itemCount === 0) {
-        MainButton.hide()
-        return
-      }
+      const formattedTotal = `${totalPrice.toLocaleString('ru-RU')} ${t(language, 'currency')}`
 
-      // Format price
-      const formattedTotal = totalPrice.toLocaleString('uz-UZ')
-
-      if (isCartPage) {
-        // On cart page - show "Checkout" button
-        MainButton.setText(`${t(language, 'checkout_btn')} • ${formattedTotal} ${t(language, 'currency')}`)
-        MainButton.color = '#8B5E3C' // Primary brown
-        MainButton.textColor = '#F8F3EB' // Cream
-        MainButton.onClick(() => navigate('/order'))
-        MainButton.show()
-      } else if (isProductPage) {
-        // On product page - show "View Cart" with item count
-        MainButton.setText(`${t(language, 'cart')} (${itemCount}) • ${formattedTotal} ${t(language, 'currency')}`)
-        MainButton.color = '#8B5E3C'
-        MainButton.textColor = '#F8F3EB'
-        MainButton.onClick(() => navigate('/cart'))
-        MainButton.show()
+      if (path === '/cart') {
+        targetRef.current = '/order'
+        MainButton.setText(`${t(language, 'checkout_btn')} • ${formattedTotal}`)
+      } else if (path.startsWith('/product/')) {
+        targetRef.current = '/cart'
+        MainButton.setText(`${t(language, 'cart')} (${itemCount}) • ${formattedTotal}`)
       } else {
-        // On other pages - show floating cart indicator
-        MainButton.setText(`🛒 ${itemCount} • ${formattedTotal} ${t(language, 'currency')}`)
-        MainButton.color = '#8B5E3C'
-        MainButton.textColor = '#F8F3EB'
-        MainButton.onClick(() => navigate('/cart'))
-        MainButton.show()
+        targetRef.current = '/cart'
+        MainButton.setText(`🛒 ${itemCount} • ${formattedTotal}`)
       }
-
-      // Cleanup
-      return () => {
-        try {
-          MainButton.offClick(() => {})
-        } catch {
-          // Ignore cleanup errors
-        }
-      }
+      MainButton.color = BUTTON_COLOR
+      MainButton.textColor = BUTTON_TEXT_COLOR
+      MainButton.show()
     } catch {
       // Telegram SDK not available (running outside Telegram)
     }
-  }, [items, totalPrice, location.pathname, language, navigate])
+  }, [items, totalPrice, location.pathname, language])
 
   return null
 }
@@ -89,28 +78,23 @@ export function useTelegramBackButton() {
   const location = useLocation()
 
   useEffect(() => {
+    const handleBack = () => navigate(-1)
     try {
-      const BackButton = WebApp.BackButton
-      if (!BackButton) return
-
-      const isHomePage = location.pathname === '/'
-
-      if (isHomePage) {
-        BackButton.hide()
-      } else {
-        BackButton.show()
-        BackButton.onClick(() => navigate(-1))
-      }
-
-      return () => {
-        try {
-          BackButton.offClick(() => {})
-        } catch {
-          // Ignore cleanup errors
-        }
-      }
+      WebApp.BackButton.onClick(handleBack)
     } catch {
       // Telegram SDK not available
     }
-  }, [location.pathname, navigate])
+    return () => {
+      try { WebApp.BackButton.offClick(handleBack) } catch { /* ignore */ }
+    }
+  }, [navigate])
+
+  useEffect(() => {
+    try {
+      if (location.pathname === '/') WebApp.BackButton.hide()
+      else WebApp.BackButton.show()
+    } catch {
+      // Telegram SDK not available
+    }
+  }, [location.pathname])
 }
