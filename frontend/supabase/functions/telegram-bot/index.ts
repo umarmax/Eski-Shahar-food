@@ -254,6 +254,27 @@ Deno.serve(async (req) => {
     return new Response('Method not allowed', { status: 405 })
   }
 
+  // Maintenance: (re)register this function as the bot webhook with the
+  // secret token. Caller must present TELEGRAM_WEBHOOK_SECRET; the URL is fixed,
+  // so this can only ever point the bot back at this function.
+  if (new URL(req.url).pathname.endsWith('/setup-webhook')) {
+    const bearer = req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') ?? null
+    if (!secretsMatch(bearer, webhookSecret)) {
+      return new Response('Unauthorized', { status: 401 })
+    }
+    const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/telegram-bot`
+    const result = await tgCall(botToken, 'setWebhook', {
+      url: webhookUrl,
+      secret_token: webhookSecret,
+      allowed_updates: ['message', 'callback_query'],
+    })
+    const me = await tgCall(botToken, 'getMe', {})
+    return new Response(
+      JSON.stringify({ ok: result.ok, description: result.description, bot: me?.result?.username, url: webhookUrl }),
+      { headers: { 'Content-Type': 'application/json' } },
+    )
+  }
+
   // Only Telegram knows the secret token set via setWebhook
   if (!secretsMatch(req.headers.get('X-Telegram-Bot-Api-Secret-Token'), webhookSecret)) {
     return new Response('Unauthorized', { status: 401 })

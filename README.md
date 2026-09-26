@@ -59,12 +59,10 @@ supabase functions deploy telegram-auth
 supabase functions deploy telegram-bot --no-verify-jwt   # Telegram calls it without a JWT
 ```
 
-Register the webhook — `secret_token` must equal `TELEGRAM_WEBHOOK_SECRET`, otherwise the bot rejects every update:
+Register the webhook (uses the bot token stored in Supabase; authorised with the webhook secret):
 
 ```bash
-curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://<project>.supabase.co/functions/v1/telegram-bot","secret_token":"<TELEGRAM_WEBHOOK_SECRET>","allowed_updates":["message","callback_query"]}'
+curl -X POST -H "Authorization: Bearer <TELEGRAM_WEBHOOK_SECRET>"   https://<project>.supabase.co/functions/v1/telegram-bot/setup-webhook
 ```
 
 ## Admin panel
