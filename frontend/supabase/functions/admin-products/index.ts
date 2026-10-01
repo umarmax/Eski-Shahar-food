@@ -69,6 +69,7 @@ function sanitizeProduct(input: ProductInput, partial: boolean): Record<string, 
   }
   if (has('cook_time_minutes')) out.cook_time_minutes = int(input.cook_time_minutes, 0, 600)
   if (has('calories')) out.calories = int(input.calories, 0, 10000)
+  if (has('weight_grams')) out.weight_grams = int(input.weight_grams, 0, 100000)
   for (const k of ['is_vegetarian', 'is_spicy', 'is_available']) {
     if (has(k)) out[k] = Boolean(input[k])
   }

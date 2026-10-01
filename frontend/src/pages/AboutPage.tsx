@@ -5,6 +5,8 @@ import { useSettingsStore } from '../store/settingsStore'
 import { t } from '../lib/i18n'
 import { WebApp } from '../lib/telegram'
 import { BUSINESS } from '../config/business'
+import { FacebookIcon, InstagramIcon } from '../components/icons'
+import { ReviewsSection } from '../components/Reviews'
 
 export function AboutPage() {
   const lang = useSettingsStore((s) => s.language)
@@ -12,8 +14,8 @@ export function AboutPage() {
   const getAddress = () => BUSINESS.address[lang]
 
   return (
-    <Layout hideNav>
-      <PageHeader title={t(lang, 'about_title')} showBack />
+    <Layout>
+      <PageHeader title={t(lang, 'about_title')} />
 
       {/* Hero */}
       <motion.section
@@ -21,21 +23,16 @@ export function AboutPage() {
         animate={{ opacity: 1, y: 0 }}
         className="px-4 pb-6"
       >
-        <div
-          className="rounded-2xl p-6 text-center"
-          style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
-        >
-          <div className="mb-4 text-5xl">🍵</div>
-          <h2
-            className="mb-2 text-xl font-bold"
-            style={{ color: 'var(--tg-theme-text-color)' }}
-          >
-            {BUSINESS.name}
-          </h2>
-          <p
-            className="text-sm"
-            style={{ color: 'var(--tg-theme-hint-color)' }}
-          >
+        {/* Always on light paper so the dark lettering stays readable in dark mode */}
+        <div className="rounded-3xl px-5 pb-5 pt-6 text-center" style={{ background: '#F1DFC4' }}>
+          <img
+            src="/brand/logo-full.webp"
+            alt={`${BUSINESS.name} Shashlik — Established 1978`}
+            width={1000}
+            height={471}
+            className="mx-auto w-full max-w-[340px]"
+          />
+          <p className="mt-3 text-sm" style={{ color: '#6B4A33' }}>
             {lang === 'uz' && "An'anaviy o'zbek oshxonasi"}
             {lang === 'ru' && 'Традиционная узбекская кухня'}
             {lang === 'en' && 'Traditional Uzbek cuisine'}
@@ -196,8 +193,30 @@ export function AboutPage() {
               </p>
             </div>
           </button>
+          {[
+            { url: BUSINESS.instagram, label: 'Instagram', Icon: InstagramIcon },
+            { url: BUSINESS.facebook, label: 'Facebook', Icon: FacebookIcon },
+          ]
+            .filter((s) => s.url)
+            .map(({ url, label, Icon }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => {
+                  try { WebApp.openLink(url) } catch { window.open(url, '_blank') }
+                }}
+                className="glass-card w-full rounded-2xl p-4 text-left"
+              >
+                <div className="flex items-center gap-3" style={{ color: 'var(--tg-theme-text-color)' }}>
+                  <span style={{ color: 'var(--tg-theme-button-color)' }}><Icon size={26} /></span>
+                  <p className="font-medium">{label}</p>
+                </div>
+              </button>
+            ))}
         </div>
       </motion.section>
+
+      <ReviewsSection />
     </Layout>
   )
 }

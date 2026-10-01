@@ -7,6 +7,7 @@ import { useCartStore } from '../store/cartStore'
 import { useSettingsStore, formatPrice } from '../store/settingsStore'
 import { t, getProductName, getProductDescription } from '../lib/i18n'
 import { WebApp } from '../lib/telegram'
+import { PLACEHOLDER_FOOD_IMAGE } from '../config/business'
 import type { Product } from '../types'
 
 export function ProductPage() {
@@ -91,15 +92,11 @@ export function ProductPage() {
         className="mx-4 mt-4 h-56 rounded-2xl overflow-hidden"
         style={{ background: 'var(--tg-theme-secondary-bg-color)' }}
       >
-        {product.image_url ? (
-          <img
-            src={product.image_url}
-            alt={getProductName(product, lang)}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-6xl">🍽️</div>
-        )}
+        <img
+          src={product.image_url || PLACEHOLDER_FOOD_IMAGE}
+          alt={getProductName(product, lang)}
+          className="h-full w-full object-cover"
+        />
       </motion.div>
 
       {/* Product info */}

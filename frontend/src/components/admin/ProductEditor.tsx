@@ -31,6 +31,7 @@ function emptyDraft(): ProductDraft {
     image_url: null,
     cook_time_minutes: null,
     calories: null,
+    weight_grams: null,
     is_vegetarian: false,
     is_spicy: false,
     is_available: true,
@@ -109,6 +110,7 @@ export function ProductEditor({ product, onClose, onSaved, onDeleted }: ProductE
       image_url: draft.image_url ?? null,
       cook_time_minutes: draft.cook_time_minutes ?? null,
       calories: draft.calories ?? null,
+      weight_grams: draft.weight_grams ?? null,
       is_vegetarian: draft.is_vegetarian,
       is_spicy: draft.is_spicy,
       is_available: draft.is_available,
@@ -335,6 +337,19 @@ export function ProductEditor({ product, onClose, onSaved, onDeleted }: ProductE
               min={0}
               value={draft.calories ?? ''}
               onChange={(e) => set('calories', e.target.value === '' ? null : Number(e.target.value))}
+              className="paper-input w-full rounded-xl px-4 py-3 text-base outline-none"
+            />
+          </div>
+          <div>
+            <label className={labelCls} style={labelStyle}>
+              {tr(lang, { uz: 'Vazni (g)', ru: 'Вес (г)', en: 'Weight (g)' })}
+            </label>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              value={draft.weight_grams ?? ''}
+              onChange={(e) => set('weight_grams', e.target.value === '' ? null : Number(e.target.value))}
               className="paper-input w-full rounded-xl px-4 py-3 text-base outline-none"
             />
           </div>

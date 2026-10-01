@@ -13,7 +13,7 @@ import {
 } from '../_shared/telegram.ts'
 
 const ORDER_COLUMNS =
-  'id, items, total, status, customer_name, delivery_address, delivery_lat, delivery_lng, created_at'
+  'id, items, total, status, customer_name, delivery_address, delivery_lat, delivery_lng, order_type, created_at'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {

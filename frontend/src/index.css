@@ -3,53 +3,60 @@
 @theme {
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-serif: 'Cormorant Garamond', Georgia, serif;
-  /* Eski Shahar color palette - Old Tashkent inspired */
-  --color-walnut: #8B5E3C;
+  /* Eski Shahar palette — retro Uzbek: terracotta, clay, sand */
+  --color-walnut: #7A3B1C;
   --color-golden-sand: #C79A5D;
   --color-emerald: #2E6F57;
+  --color-terracotta: #B5480F;
   --color-cream-50: #F8F3EB;
   --color-cream-100: #f5f0e8;
   --color-cream-200: #ebe3d6;
-  --color-navy-900: #0f172a;
-  --color-navy-800: #1e293b;
 }
 
-/* ── Paper palette ──
-   The app keeps its own parchment look; Telegram only decides light vs dark
+/* ── Retro paper palette ──
+   The app keeps its own look; Telegram only decides light vs dark
    (see applyTelegramTheme in lib/telegram.ts). */
 :root {
-  --tg-theme-bg-color: #F3E7CF;
-  --tg-theme-text-color: #3A2A1B;
-  --tg-theme-hint-color: #7A6650;
-  --tg-theme-link-color: #8B5E3C;
-  --tg-theme-button-color: #8B5E3C;
-  --tg-theme-button-text-color: #FBF5E8;
-  --tg-theme-secondary-bg-color: #E9D8B6;
-  --tg-theme-accent-text-color: #9A6B2F;
+  --tg-theme-bg-color: #F4E4CF;
+  --tg-theme-text-color: #2B1A10;
+  --tg-theme-hint-color: #7C6450;
+  --tg-theme-link-color: #A85A22;
+  --tg-theme-button-color: #C8773E;
+  --tg-theme-button-text-color: #1E140D;
+  --tg-theme-secondary-bg-color: #EBD4B5;
+  --tg-theme-accent-text-color: #C2621F;
   --tg-theme-destructive-text-color: #B23A2E;
-  --paper-card: #FBF4E4;
-  --paper-ink: 58, 42, 27;
-  --paper-stain: 150, 105, 50;
-  --pattern-opacity: 0.16;
+  --paper-card: #FAF0E2;
+  --card-frame: #E6C7A1;
+  --brand-ink: #A9561F;
+  --card-photo: #FFFFFF;
+  --banner-bg: #1E120B;
+  --banner-text: #FFF4E6;
+  --paper-ink: 58, 36, 20;
+  --paper-stain: 150, 90, 40;
   --app-safe-top: env(safe-area-inset-top, 0px);
   --app-safe-bottom: env(safe-area-inset-bottom, 0px);
   color-scheme: light;
 }
 
 [data-color-scheme='dark'] {
-  --tg-theme-bg-color: #1F1811;
-  --tg-theme-text-color: #F1E6D0;
-  --tg-theme-hint-color: #A8977E;
-  --tg-theme-link-color: #D9B070;
-  --tg-theme-button-color: #C79A5D;
-  --tg-theme-button-text-color: #1F1811;
-  --tg-theme-secondary-bg-color: #2E241A;
-  --tg-theme-accent-text-color: #D9B070;
+  --tg-theme-bg-color: #1E140D;
+  --tg-theme-text-color: #F4E4CF;
+  --tg-theme-hint-color: #B79C82;
+  --tg-theme-link-color: #E8A06A;
+  --tg-theme-button-color: #C8773E;
+  --tg-theme-button-text-color: #1E140D;
+  --tg-theme-secondary-bg-color: #33231A;
+  --tg-theme-accent-text-color: #E8893F;
   --tg-theme-destructive-text-color: #E0705F;
-  --paper-card: #2A2017;
+  --paper-card: #2A1C12;
+  --card-frame: #3A2717;
+  --brand-ink: #C8773E;
+  --card-photo: #F4ECE2;
+  --banner-bg: #F4E4CF;
+  --banner-text: #1E140D;
   --paper-ink: 0, 0, 0;
   --paper-stain: 0, 0, 0;
-  --pattern-opacity: 0.2;
   color-scheme: dark;
 }
 
@@ -62,6 +69,7 @@
 html {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -82,11 +90,11 @@ body {
   z-index: 1;
   min-height: 100dvh;
   padding-top: var(--app-safe-top);
-  padding-bottom: calc(var(--app-safe-bottom) + 72px);
+  padding-bottom: calc(var(--app-safe-bottom) + 76px);
   background: transparent;
 }
 
-/* ── Animated paper background (components/AppBackground.tsx) ── */
+/* ── Retro paper background (components/AppBackground.tsx) ── */
 
 .app-bg {
   position: fixed;
@@ -99,121 +107,58 @@ body {
 
 .app-bg > * {
   position: absolute;
+  inset: 0;
 }
 
 /* Fine grain + paper fibres */
 .app-bg__grain {
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.2 0 0 0 0 0.1 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.06' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.32 0 0 0 0 0.15 0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
-  opacity: 0.55;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.18 0 0 0 0 0.08 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.06' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.28 0 0 0 0 0.12 0 0 0 0.3 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  opacity: 0.5;
   mix-blend-mode: multiply;
 }
 
 [data-color-scheme='dark'] .app-bg__grain {
-  opacity: 0.35;
+  opacity: 0.3;
   mix-blend-mode: screen;
   filter: invert(1) sepia(1) brightness(0.5);
 }
 
-/* Aged blotches / tea stains */
+/* Aged blotches */
 .app-bg__stains {
-  inset: 0;
   background:
-    radial-gradient(ellipse 38% 28% at 12% 18%, rgba(var(--paper-stain), 0.12), transparent 70%),
-    radial-gradient(ellipse 30% 22% at 88% 62%, rgba(var(--paper-stain), 0.1), transparent 70%),
-    radial-gradient(circle at 70% 8%, transparent 52px, rgba(var(--paper-stain), 0.08) 54px, transparent 60px),
-    radial-gradient(ellipse 45% 30% at 30% 92%, rgba(var(--paper-stain), 0.09), transparent 70%);
+    radial-gradient(ellipse 38% 28% at 12% 18%, rgba(var(--paper-stain), 0.1), transparent 70%),
+    radial-gradient(ellipse 30% 22% at 88% 62%, rgba(var(--paper-stain), 0.08), transparent 70%),
+    radial-gradient(ellipse 45% 30% at 30% 92%, rgba(var(--paper-stain), 0.08), transparent 70%);
 }
 
-/* Uzbek girih pattern — tile is 80px, drift moves exactly one tile so it loops seamlessly */
-.app-bg__pattern-wrap {
-  inset: -160px;
-  will-change: transform;
-}
-
-.app-bg__pattern,
-.app-bg__bloom-pattern {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='none' stroke='%23B8894A' stroke-width='1.1'%3E%3Cpath d='M40 14 L47.5 32.5 L66 40 L47.5 47.5 L40 66 L32.5 47.5 L14 40 L32.5 32.5 Z'/%3E%3Crect x='26' y='26' width='28' height='28'/%3E%3Crect x='26' y='26' width='28' height='28' transform='rotate(45 40 40)'/%3E%3Ccircle cx='40' cy='40' r='6'/%3E%3Cpath d='M40 0 V14 M40 66 V80 M0 40 H14 M66 40 H80'/%3E%3Cpath d='M0 8 L8 0 M72 0 L80 8 M80 72 L72 80 M8 80 L0 72'/%3E%3Cpath d='M0 0 L12 12 M80 0 L68 12 M80 80 L68 68 M0 80 L12 68' stroke-dasharray='2 3'/%3E%3C/g%3E%3C/svg%3E");
-  background-size: 80px 80px;
-}
-
-.app-bg__pattern {
-  position: absolute;
-  inset: 0;
-  opacity: var(--pattern-opacity);
-  animation: girih-drift 48s linear infinite;
-  will-change: transform;
-}
-
-@keyframes girih-drift {
-  from { transform: translate3d(0, 0, 0); }
-  to { transform: translate3d(80px, 80px, 0); }
-}
-
-/* Slowly "breathing" golden medallion glow */
-.app-bg__glow {
-  top: -20vh;
-  left: 50%;
-  width: 140vw;
-  height: 70vh;
-  transform: translateX(-50%);
-  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--color-golden-sand) 26%, transparent), transparent 65%);
-  animation: glow-breathe 9s ease-in-out infinite;
-}
-
-@keyframes glow-breathe {
-  0%, 100% { opacity: 0.55; transform: translateX(-50%) scale(1); }
-  50% { opacity: 0.9; transform: translateX(-50%) scale(1.06); }
-}
-
-/* Burnt / darkened page edges */
+/* Darkened page edges, like an old print */
 .app-bg__vignette {
-  inset: 0;
-  box-shadow: inset 0 0 120px 20px rgba(var(--paper-ink), 0.18);
-  background: radial-gradient(ellipse 90% 80% at 50% 45%, transparent 60%, rgba(var(--paper-stain), 0.14) 100%);
+  box-shadow: inset 0 0 120px 20px rgba(var(--paper-ink), 0.16);
 }
 
-/* Touch "ink bloom" — reveals the pattern brighter where you tap */
-.app-bg__bloom {
-  width: 260px;
-  height: 260px;
-  margin: -130px 0 0 -130px;
-  border-radius: 9999px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--color-golden-sand) 35%, transparent), transparent 65%);
-  overflow: hidden;
-}
-
-.app-bg__bloom-pattern {
-  position: absolute;
-  inset: 0;
-  opacity: 0.8;
-  -webkit-mask-image: radial-gradient(circle, #000 25%, transparent 68%);
-  mask-image: radial-gradient(circle, #000 25%, transparent 68%);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .app-bg__pattern,
-  .app-bg__glow {
-    animation: none;
-  }
-}
-
-/* ── Paper surfaces ── */
+/* ── Surfaces ── */
 
 .glass-card,
 .paper-card {
-  background: color-mix(in srgb, var(--paper-card) 80%, transparent);
-  -webkit-backdrop-filter: blur(6px) saturate(1.1);
-  backdrop-filter: blur(6px) saturate(1.1);
-  border: 1px solid color-mix(in srgb, var(--tg-theme-accent-text-color) 22%, transparent);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    0 8px 20px -14px rgba(var(--paper-ink), 0.55);
+  background: color-mix(in srgb, var(--paper-card) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tg-theme-button-color) 14%, transparent);
+  box-shadow: 0 8px 20px -16px rgba(var(--paper-ink), 0.6);
+}
+
+/* Menu card: tan frame, white photo plate (Manticha-style) */
+.menu-card {
+  background: var(--card-frame);
+  border-radius: 22px;
+}
+
+.menu-card__photo {
+  background: var(--card-photo);
+  border-radius: 16px;
 }
 
 .paper-input {
-  background: color-mix(in srgb, var(--paper-card) 88%, transparent);
+  background: color-mix(in srgb, var(--paper-card) 90%, transparent);
   color: var(--tg-theme-text-color);
   border: 1px solid color-mix(in srgb, var(--tg-theme-text-color) 14%, transparent);
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -224,36 +169,15 @@ body {
 }
 
 .paper-input:focus {
-  border-color: var(--tg-theme-accent-text-color);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tg-theme-accent-text-color) 20%, transparent);
+  border-color: var(--tg-theme-button-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tg-theme-button-color) 18%, transparent);
 }
 
-/* Section ornament: ── ✦ ── */
+/* Retro double rule */
 .ornament-divider {
-  height: 14px;
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='M7 0 L8.6 5.4 L14 7 L8.6 8.6 L7 14 L5.4 8.6 L0 7 L5.4 5.4 Z' fill='%23B8894A'/%3E%3C/svg%3E") center / 14px no-repeat,
-    linear-gradient(to right, transparent, color-mix(in srgb, var(--tg-theme-accent-text-color) 55%, transparent) 30%, transparent 44%, transparent 56%, color-mix(in srgb, var(--tg-theme-accent-text-color) 55%, transparent) 70%, transparent) center / 100% 1px no-repeat;
-}
-
-.gradient-hero {
-  background: transparent;
-}
-
-/* Hero medallion: large rotating 8-point star */
-.hero-medallion {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cg fill='none' stroke='%23B8894A' stroke-width='1.2'%3E%3Ccircle cx='100' cy='100' r='96'/%3E%3Ccircle cx='100' cy='100' r='88' stroke-dasharray='3 5'/%3E%3Crect x='44' y='44' width='112' height='112'/%3E%3Crect x='44' y='44' width='112' height='112' transform='rotate(45 100 100)'/%3E%3Crect x='64' y='64' width='72' height='72' transform='rotate(22.5 100 100)'/%3E%3Crect x='64' y='64' width='72' height='72' transform='rotate(67.5 100 100)'/%3E%3Ccircle cx='100' cy='100' r='22'/%3E%3Ccircle cx='100' cy='100' r='12'/%3E%3C/g%3E%3C/svg%3E");
-  background-size: contain;
-  background-repeat: no-repeat;
-  animation: medallion-spin 120s linear infinite;
-}
-
-@keyframes medallion-spin {
-  to { transform: rotate(360deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-medallion { animation: none; }
+  height: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--tg-theme-button-color) 35%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--tg-theme-button-color) 35%, transparent);
 }
 
 /* Food image placeholder */

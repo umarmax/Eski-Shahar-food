@@ -5,6 +5,8 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_ANON_KEY: string
   readonly VITE_TELEGRAM_BOT_USERNAME: string
   readonly VITE_ADMIN_TELEGRAM_IDS?: string
+  readonly VITE_INSTAGRAM_URL?: string
+  readonly VITE_FACEBOOK_URL?: string
 }
 
 interface ImportMeta {

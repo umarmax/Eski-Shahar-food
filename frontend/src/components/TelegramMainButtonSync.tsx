@@ -5,8 +5,8 @@ import { useSettingsStore } from '../store/settingsStore'
 import { WebApp } from '../lib/telegram'
 import { t } from '../lib/i18n'
 
-const BUTTON_COLOR = '#8B5E3C'
-const BUTTON_TEXT_COLOR = '#F8F3EB'
+const BUTTON_COLOR = '#C8773E'
+const BUTTON_TEXT_COLOR = '#1E140D'
 
 /**
  * Syncs cart state with Telegram's MainButton.

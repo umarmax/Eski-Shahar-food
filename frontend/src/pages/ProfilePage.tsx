@@ -233,8 +233,15 @@ export function ProfilePage() {
         </section>
       )}
 
-      {/* About link */}
-      <section className="px-4 pb-6">
+      {/* About + settings links */}
+      <section className="space-y-2 px-4 pb-6">
+        <Link
+          to="/settings"
+          className="glass-card flex items-center justify-between rounded-2xl p-4"
+        >
+          <span style={{ color: 'var(--tg-theme-text-color)' }}>⚙️ {t(lang, 'settings')}</span>
+          <span style={{ color: 'var(--tg-theme-hint-color)' }}>→</span>
+        </Link>
         <Link
           to="/about"
           className="glass-card flex items-center justify-between rounded-2xl p-4"

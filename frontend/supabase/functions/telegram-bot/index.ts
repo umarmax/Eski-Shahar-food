@@ -189,6 +189,31 @@ async function handleLocation(botToken: string, supabase: any, msg: TelegramMess
   }
 }
 
+async function handleHideReview(
+  botToken: string,
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  cb: NonNullable<TelegramUpdate['callback_query']>,
+) {
+  if (!isAdminId(cb.from.id)) {
+    await tgCall(botToken, 'answerCallbackQuery', { callback_query_id: cb.id, text: '⛔' })
+    return
+  }
+  const reviewId = (cb.data ?? '').split(':')[1]
+  const { error } = await supabase.from('reviews').update({ is_published: false }).eq('id', reviewId)
+  await tgCall(botToken, 'answerCallbackQuery', {
+    callback_query_id: cb.id,
+    text: error ? 'Xatolik' : '🙈 Sharh yashirildi',
+  })
+  if (!error && cb.message) {
+    await tgCall(botToken, 'editMessageReplyMarkup', {
+      chat_id: cb.message.chat.id,
+      message_id: cb.message.message_id,
+      reply_markup: { inline_keyboard: [] },
+    })
+  }
+}
+
 async function handleOrderCallback(
   botToken: string,
   // deno-lint-ignore no-explicit-any
@@ -299,6 +324,8 @@ Deno.serve(async (req) => {
       update.callback_query?.data?.startsWith('cancel_order:')
     ) {
       await handleOrderCallback(botToken, supabase, update.callback_query)
+    } else if (update.callback_query?.data?.startsWith('hide_review:')) {
+      await handleHideReview(botToken, supabase, update.callback_query)
     }
   } catch (e) {
     // Always 200 so Telegram doesn't retry the same update forever

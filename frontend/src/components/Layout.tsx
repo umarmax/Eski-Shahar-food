@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { useCartStore } from '../store/cartStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { t } from '../lib/i18n'
+import { AboutIcon, CartIcon, HomeIcon, ProfileIcon } from './icons'
 
 interface LayoutProps {
   children: ReactNode
@@ -14,10 +15,10 @@ export function Layout({ children, hideNav = false }: LayoutProps) {
   const lang = useSettingsStore((s) => s.language)
 
   const TABS = [
-    { to: '/', label: t(lang, 'home'), icon: '🏠', end: true },
-    { to: '/menu', label: t(lang, 'menu'), icon: '🍽️', end: false },
-    { to: '/cart', label: t(lang, 'cart'), icon: '🛒', end: false },
-    { to: '/profile', label: t(lang, 'profile'), icon: '👤', end: false },
+    { to: '/', label: t(lang, 'home'), Icon: HomeIcon, end: true },
+    { to: '/cart', label: t(lang, 'cart'), Icon: CartIcon, end: false },
+    { to: '/about', label: t(lang, 'about'), Icon: AboutIcon, end: false },
+    { to: '/profile', label: t(lang, 'profile'), Icon: ProfileIcon, end: false },
   ] as const
 
   return (
@@ -26,40 +27,33 @@ export function Layout({ children, hideNav = false }: LayoutProps) {
 
       {!hideNav && (
         <nav
-          className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-md border-t px-2 py-1"
+          className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-md rounded-t-3xl px-2 pt-2"
           style={{
-            paddingBottom: 'calc(var(--app-safe-bottom) + 6px)',
-            background:
-              'color-mix(in srgb, var(--tg-theme-bg-color) 95%, transparent)',
-            borderColor:
-              'color-mix(in srgb, var(--tg-theme-text-color) 8%, transparent)',
+            paddingBottom: 'calc(var(--app-safe-bottom) + 8px)',
+            background: 'color-mix(in srgb, var(--paper-card) 94%, transparent)',
+            boxShadow: '0 -6px 24px -12px rgba(var(--paper-ink), 0.35)',
             backdropFilter: 'blur(16px)',
           }}
         >
           <div className="flex items-center justify-around">
-            {TABS.map((tab) => (
+            {TABS.map(({ to, label, Icon, end }) => (
               <NavLink
-                key={tab.to}
-                to={tab.to}
-                end={tab.end}
-                className="relative flex min-h-[48px] min-w-[60px] flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[10px] font-medium"
+                key={to}
+                to={to}
+                end={end}
+                className="relative flex min-h-[52px] min-w-[64px] flex-col items-center justify-center gap-1 rounded-xl px-2 text-[11px] font-medium"
                 style={({ isActive }) => ({
-                  color: isActive
-                    ? 'var(--tg-theme-accent-text-color)'
-                    : 'var(--tg-theme-hint-color)',
-                  background: isActive
-                    ? 'color-mix(in srgb, var(--tg-theme-accent-text-color) 10%, transparent)'
-                    : 'transparent',
+                  color: isActive ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-hint-color)',
                 })}
               >
-                <span className="text-lg leading-none">{tab.icon}</span>
-                <span>{tab.label}</span>
-                {tab.to === '/cart' && cartCount > 0 && (
+                <Icon size={24} />
+                <span>{label}</span>
+                {to === '/cart' && cartCount > 0 && (
                   <span
-                    className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold"
+                    className="absolute right-2 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold"
                     style={{
                       background: 'var(--tg-theme-accent-text-color)',
-                      color: 'var(--tg-theme-bg-color)',
+                      color: 'var(--tg-theme-button-text-color)',
                     }}
                   >
                     {cartCount > 9 ? '9+' : cartCount}

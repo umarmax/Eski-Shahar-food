@@ -198,6 +198,7 @@ export interface NotifyOrder {
   location_accuracy: number | null
   location_requested_at: string | null
   lang: string | null
+  order_type?: string | null
   items: Array<{ name: string; quantity: number; price: number }>
 }
 
@@ -247,6 +248,7 @@ async function notifyAdminNewOrder(botToken: string, adminChatId: string, order:
     `🍽 <b>Yangi buyurtma #${shortId(order.id)}</b>`,
     '',
     `💰 <b>Jami:</b> ${formatSum(order.total)} so'm`,
+    order.order_type === 'pickup' ? `🚶 <b>Olib ketish</b> (o'zi olib ketadi)` : `🚗 <b>Yetkazib berish</b>`,
     '',
     `👤 <b>Mijoz:</b> ${order.customer_name ? escapeHtml(order.customer_name) : '—'}`,
     order.customer_phone ? `📞 <b>Telefon:</b> ${escapeHtml(order.customer_phone)}` : null,

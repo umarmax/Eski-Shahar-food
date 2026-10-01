@@ -4,13 +4,16 @@ import { motion } from 'framer-motion'
 import { Layout } from '../components/Layout'
 import { PageHeader } from '../components/PageHeader'
 import { LocationPicker } from '../components/LocationPicker'
+import { ReviewSheet } from '../components/Reviews'
+import { BUSINESS } from '../config/business'
+import { useDeliveryStore } from '../store/deliveryStore'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { WebApp, isInTelegram, type DeliveryLocation } from '../lib/telegram'
 import { useAuthStore } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
 import { useSettingsStore, formatPrice } from '../store/settingsStore'
 import { t, getProductName } from '../lib/i18n'
-import type { OrderPayload } from '../types'
+import type { OrderPayload, OrderType } from '../types'
 
 const PHONE_REGEX = /^[\+]?[0-9\s\-\(\)]{9,20}$/
 
@@ -28,6 +31,7 @@ function OrderSuccess({ order }: { order: PlacedOrder }) {
   const navigate = useNavigate()
   const lang = useSettingsStore((s) => s.language)
   const [copied, setCopied] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
   const shortId = order.id.slice(0, 8)
 
   const copyId = async () => {
@@ -122,9 +126,20 @@ function OrderSuccess({ order }: { order: PlacedOrder }) {
             >
               {t(lang, 'my_orders_btn')}
             </motion.button>
+            {isInTelegram && (
+              <button
+                type="button"
+                onClick={() => setReviewOpen(true)}
+                className="flex min-h-[44px] w-full items-center justify-center rounded-2xl text-sm font-semibold"
+                style={{ color: 'var(--tg-theme-link-color)' }}
+              >
+                {t(lang, 'reviews_leave')}
+              </button>
+            )}
           </div>
         </div>
       </motion.section>
+      <ReviewSheet open={reviewOpen} onClose={() => setReviewOpen(false)} orderId={order.id} />
     </Layout>
   )
 }
@@ -150,9 +165,12 @@ export function OrderFormPage() {
 
   const [name, setName] = useState(defaultName || savedName)
   const [phone, setPhone] = useState(readLocal('choyxona-last-phone'))
-  const [location, setLocation] = useState<DeliveryLocation | null>(null)
+  const delivery = useDeliveryStore()
+  const orderType = delivery.orderType
+  const isDelivery = orderType === 'delivery'
+  const [location, setLocation] = useState<DeliveryLocation | null>(delivery.location)
   const [locationViaChat, setLocationViaChat] = useState(false)
-  const [address, setAddress] = useState('')
+  const [address, setAddress] = useState(delivery.address)
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -177,7 +195,7 @@ export function OrderFormPage() {
     if (!phone.trim()) newErrors.phone = t(lang, 'val_phone_required')
     else if (!PHONE_REGEX.test(phone)) newErrors.phone = t(lang, 'val_phone_invalid')
     else if (phone.length > 20) newErrors.phone = t(lang, 'val_phone_long')
-    if (!location && !address.trim() && !(locationViaChat && isInTelegram)) {
+    if (isDelivery && !location && !address.trim() && !(locationViaChat && isInTelegram)) {
       newErrors.location = t(lang, 'val_location_or_address')
     }
     if (address && address.length > 500) newErrors.address = t(lang, 'val_address_long')
@@ -203,9 +221,10 @@ export function OrderFormPage() {
         lang,
         customer_name: name.trim(),
         customer_phone: phone.trim(),
-        delivery_address: address.trim() || undefined,
-        delivery_location: location ?? undefined,
-        location_via_chat: !location && locationViaChat && isInTelegram,
+        order_type: orderType,
+        delivery_address: isDelivery ? address.trim() || undefined : undefined,
+        delivery_location: isDelivery ? location ?? undefined : undefined,
+        location_via_chat: isDelivery && !location && locationViaChat && isInTelegram,
         comment: comment.trim() || undefined,
       }
 
@@ -245,6 +264,10 @@ export function OrderFormPage() {
         localStorage.setItem('choyxona-last-phone', phone.trim())
       } catch { /* ignore */ }
 
+      if (isDelivery) {
+        delivery.setAddress(address.trim())
+        delivery.setLocation(location)
+      }
       clearCart()
       setPlacedOrder(order)
       try { WebApp.HapticFeedback.notificationOccurred('success') } catch { /* ignore */ }
@@ -338,6 +361,39 @@ export function OrderFormPage() {
             {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
           </div>
 
+          <div className="flex gap-1 rounded-2xl p-1" style={{ background: 'var(--card-frame)' }}>
+            {(['delivery', 'pickup'] as OrderType[]).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => { delivery.setOrderType(type); clearError('location') }}
+                className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-colors"
+                style={{
+                  background: orderType === type ? 'var(--tg-theme-button-color)' : 'transparent',
+                  color: orderType === type ? 'var(--tg-theme-button-text-color)' : 'var(--tg-theme-text-color)',
+                }}
+              >
+                {t(lang, type)}
+              </button>
+            ))}
+          </div>
+
+          {!isDelivery && (
+            <div className="paper-card rounded-2xl p-4">
+              <p className="mb-1 text-xs" style={{ color: 'var(--tg-theme-hint-color)' }}>{t(lang, 'pickup_note')}</p>
+              <p className="font-semibold" style={{ color: 'var(--tg-theme-text-color)' }}>📍 {BUSINESS.address[lang]}</p>
+              <button
+                type="button"
+                onClick={() => { try { WebApp.openLink(BUSINESS.mapUrl) } catch { window.open(BUSINESS.mapUrl, '_blank') } }}
+                className="mt-1 text-xs font-medium"
+                style={{ color: 'var(--tg-theme-link-color)' }}
+              >
+                {t(lang, 'loc_open_map')} →
+              </button>
+            </div>
+          )}
+
+          {isDelivery && (<>
           <div>
             <LocationPicker
               value={location}
@@ -370,6 +426,7 @@ export function OrderFormPage() {
             />
             {errors.address && <p className="mt-1 text-xs text-red-500">{errors.address}</p>}
           </div>
+          </>)}
 
           <div>
             <label className="mb-2 block text-sm font-medium" style={labelStyle}>

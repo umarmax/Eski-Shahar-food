@@ -32,6 +32,7 @@ interface OrderRequest {
   delivery_address?: string
   delivery_location?: { lat: number; lng: number; accuracy?: number | null }
   location_via_chat?: boolean
+  order_type?: 'delivery' | 'pickup'
   comment?: string
 }
 
@@ -116,12 +117,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    const location = isValidLocation(body.delivery_location) ? body.delivery_location : null
-    const address = body.delivery_address?.trim() || null
-    const locationViaChat = Boolean(body.location_via_chat && tgUser && !location)
+    const orderType = body.order_type === 'pickup' ? 'pickup' : 'delivery'
+    const isDelivery = orderType === 'delivery'
+    const location = isDelivery && isValidLocation(body.delivery_location) ? body.delivery_location : null
+    const address = isDelivery ? body.delivery_address?.trim() || null : null
+    const locationViaChat = Boolean(isDelivery && body.location_via_chat && tgUser && !location)
 
-    // Location OR address is required (or a chat location request from a verified Telegram user)
-    if (!location && !address && !locationViaChat) {
+    // Delivery needs a location OR address (or a chat location request from a verified Telegram user)
+    if (isDelivery && !location && !address && !locationViaChat) {
       return jsonResponse({ error: 'Delivery location or address is required' }, 400)
     }
 
@@ -202,6 +205,7 @@ Deno.serve(async (req) => {
         location_source: location ? 'app' : null,
         location_requested_at: locationViaChat ? new Date().toISOString() : null,
         lang,
+        order_type: orderType,
       })
       .select('*')
       .single()

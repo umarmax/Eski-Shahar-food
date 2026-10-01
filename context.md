@@ -20,6 +20,13 @@
 | Telegram SDK | Native `window.Telegram.WebApp` (NOT @twa-dev/sdk) |
 | Deployment | Vercel (frontend) + Supabase (backend) |
 
+### Session 7 (October 2, 2026)
+- Home redesigned (Manticha-style): hero photo with dome logo + slogan, language/theme chips on the photo, menu sections with 2-column cards (photo, price, weight, "+" -> stepper), scroll-to-top
+- Bottom nav: Home, Cart, About, Profile; About shows full brand logo, reviews, Instagram/Facebook (set VITE_INSTAGRAM_URL / VITE_FACEBOOK_URL)
+- Retro paper background without ornaments; caramel accents in both themes
+- Pickup option at checkout (orders.order_type); dish weight (products.weight_grams); reviews (table + `reviews` function, admins can hide from the bot) — migration 006
+- Placeholder photo for dishes without their own image
+
 ### Session 6 (September 26, 2026)
 - Business info: Tashkent, Shayxontohur district, Chorsu market · +998 90 799 29 29 (`frontend/src/config/business.ts`)
 - Removed the word "choyxona" from the UI/bot and removed "free delivery" claims

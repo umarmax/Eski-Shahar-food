@@ -16,8 +16,11 @@ export interface Product {
   cook_time_minutes?: number
   calories?: number
   is_available?: boolean
+  weight_grams?: number | null
   created_at: string
 }
+
+export type OrderType = 'delivery' | 'pickup'
 
 export interface Category {
   id: string
@@ -58,6 +61,7 @@ export interface Order {
   delivery_address?: string
   delivery_lat?: number | null
   delivery_lng?: number | null
+  order_type?: OrderType
   comment?: string
   created_at: string
 }
@@ -74,6 +78,7 @@ export interface OrderPayload {
   delivery_address?: string
   delivery_location?: { lat: number; lng: number; accuracy: number | null }
   location_via_chat?: boolean
+  order_type: OrderType
   comment?: string
 }
 
